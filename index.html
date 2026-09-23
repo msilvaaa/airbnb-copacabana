@@ -480,12 +480,16 @@ function setSelects(){
 }
 function syncYearSelectorForView(){
   const yearSel=qs('yearSelect'),viewSel=qs('viewSelect');if(!yearSel||!viewSel)return;
-  const allOption=yearSel.querySelector('option[value="all"]');if(allOption)allOption.disabled=viewSel.value==='monthly';
+  const allOption=yearSel.querySelector('option[value="all"]');
+  const annualOption=viewSel.querySelector('option[value="annual"]');
   const monthlyOption=viewSel.querySelector('option[value="monthly"]');
   const allYears=yearSel.value==='all';
+  if(allOption)allOption.disabled=viewSel.value==='monthly';
+  if(annualOption)annualOption.disabled=!allYears;
   if(monthlyOption)monthlyOption.disabled=allYears;
   if(allYears&&viewSel.value==='monthly')viewSel.value='annual';
-  if(!allYears&&yearSel.value==='' )yearSel.value=years.includes('2026')?'2026':years[years.length-1];
+  if(!allYears&&viewSel.value==='annual')viewSel.value='monthly';
+  if(!allYears&&yearSel.value==='')yearSel.value=years.includes('2026')?'2026':years[years.length-1];
 }
 function renderKpis(){
   const y=qs('yearSelect').value,p=periodBounds(),view=qs('viewSelect').value;
