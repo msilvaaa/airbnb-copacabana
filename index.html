@@ -284,7 +284,7 @@ async function initCloud(){
       await loadCloudOverrides();
       DATA=loadMergedData();
       years=getYears();
-      renderAll();
+      resetFiltersToDefault();
     }
     supabaseClient.auth.onAuthStateChange((_event,session)=>{
       // O carregamento inicial e o login já fazem a leitura do Supabase.
@@ -567,7 +567,8 @@ function resetFiltersToDefault(){
 // Ao abrir/reabrir o site, aguarda a leitura do Supabase antes de desenhar
 // os valores. Assim o usuário não vê um valor provisório que muda sozinho.
 async function startDashboard(){
-  resetFiltersToDefault();
+  // Não renderiza a BASE_DATA antes de consultar o Supabase.
+  // Isso evita o efeito visual de um valor aparecer e depois mudar.
   await initCloud();
 }
 startDashboard();
