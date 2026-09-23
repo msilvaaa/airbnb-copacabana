@@ -585,6 +585,9 @@ async function startDashboard(){
   }
   await initCloud();
 }
+// Inicialização imediata: garante que os filtros e gráficos sejam desenhados
+// mesmo quando o navegador restaura a página sem disparar pageshow da forma esperada.
+resetFiltersToDefault();
 startDashboard();
 window.addEventListener('pageshow',()=>{resetFiltersToDefault()});
 
