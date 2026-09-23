@@ -243,14 +243,58 @@ async function migrateLegacyIfNeeded(){
   if(error){console.error('Supabase migration check error',error);return}
   if(!(data||[]).length)await saveCloudOverrides(legacy);
 }
+async function refreshCloudData(){
+  try{
+    const {data:{session}}=await supabaseClient.auth.getSession();
+    if(!session?.user) return false;
+    cloudUser=session.user;
+    await loadCloudOverrides();
+    DATA=loadMergedData();
+    years=getYears();
+    renderAll();
+    return true;
+  }catch(e){
+    console.error('Supabase refresh error',e);
+    return false;
+  }
+}
 async function initCloud(){
   try{
     const {data:{session}}=await supabaseClient.auth.getSession();
-    if(session?.user){cloudUser=session.user;await migrateLegacyIfNeeded();await loadCloudOverrides();DATA=loadMergedData();years=getYears();renderAll()}
-    supabaseClient.auth.onAuthStateChange(async(_event,session)=>{
-      if(session?.user){cloudUser=session.user;await migrateLegacyIfNeeded();await loadCloudOverrides();DATA=loadMergedData();years=getYears();renderAll()}
-      else{cloudUser=null;cloudOverrides={};cloudReady=false;DATA=loadMergedData();years=getYears();renderAll()}
+    if(session?.user){
+      cloudUser=session.user;
+      await migrateLegacyIfNeeded();
+      await loadCloudOverrides();
+      DATA=loadMergedData();
+      years=getYears();
+      renderAll();
+    }
+    supabaseClient.auth.onAuthStateChange((_event,session)=>{
+      if(session?.user){
+        cloudUser=session.user;
+        setTimeout(async()=>{
+          await loadCloudOverrides();
+          DATA=loadMergedData();
+          years=getYears();
+          renderAll();
+        },0);
+      }else{
+        cloudUser=null;
+        cloudOverrides={};
+        cloudReady=false;
+        DATA=loadMergedData();
+        years=getYears();
+        renderAll();
+      }
     });
+
+    // Mantém o dashboard sincronizado sem precisar abrir "Editar dados".
+    // Atualiza ao voltar para a aba/janela e periodicamente enquanto estiver aberta.
+    document.addEventListener('visibilitychange',()=>{
+      if(document.visibilityState==='visible') refreshCloudData();
+    });
+    window.addEventListener('focus',()=>refreshCloudData());
+    setInterval(()=>refreshCloudData(),60000);
   }catch(e){console.error('Supabase initialization error',e)}
 }
 
