@@ -288,13 +288,9 @@ async function initCloud(){
       }
     });
 
-    // Mantém o dashboard sincronizado sem precisar abrir "Editar dados".
-    // Atualiza ao voltar para a aba/janela e periodicamente enquanto estiver aberta.
-    document.addEventListener('visibilitychange',()=>{
-      if(document.visibilityState==='visible') refreshCloudData();
-    });
-    window.addEventListener('focus',()=>refreshCloudData());
-    setInterval(()=>refreshCloudData(),60000);
+    // Não faz atualização automática enquanto o dashboard está aberto.
+    // Os valores permanecem estáveis na tela e são atualizados somente após
+    // uma alteração salva pelo editor ou ao recarregar a página.
   }catch(e){console.error('Supabase initialization error',e)}
 }
 
