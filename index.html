@@ -481,8 +481,9 @@ function renderKpis(){
   const y=qs('yearSelect').value,p=periodBounds(),view=qs('viewSelect').value;
   let rev=0,fix=0,maint=0,balance=null,margin=null,complete=0;
   const ys=y==='all'?years:[String(y)];
+  const yr=y==='all'?years[years.length-1]:String(y);
   if(view==='monthly'){
-    const yr=y==='all'?years[years.length-1]:String(y),st=periodStats(yr,p.start,p.end);
+    const st=periodStats(yr,p.start,p.end);
     ({rev,fix,maint,balance,margin}=st); complete=st.bn;
   }else{
     ys.forEach(yr=>{const st=periodStats(yr,p.start,p.end);rev+=st.rev||0;fix+=st.fix||0;maint+=st.maint||0;if(st.balance!=null){balance=(balance||0)+st.balance;complete+=st.bn}});
