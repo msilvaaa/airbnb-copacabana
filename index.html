@@ -564,9 +564,13 @@ function resetFiltersToDefault(){
   renderAll();
 }
 
-// Ao abrir/reabrir o site, sempre inicia no período completo.
-resetFiltersToDefault();
-initCloud();
+// Ao abrir/reabrir o site, aguarda a leitura do Supabase antes de desenhar
+// os valores. Assim o usuário não vê um valor provisório que muda sozinho.
+async function startDashboard(){
+  resetFiltersToDefault();
+  await initCloud();
+}
+startDashboard();
 window.addEventListener('pageshow',()=>{resetFiltersToDefault()});
 
 /* Limpeza automática de dados TEMPORÁRIOS ao sair/fechar a página.
