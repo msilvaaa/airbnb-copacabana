@@ -493,7 +493,7 @@ function renderOverview(){
     series=[{name:'Receita '+yr,values:rows.map(d=>d.r),color:COLORS.blue},{name:'Custos fixos '+yr,values:rows.map(d=>d.f),color:COLORS.red},{name:'Manutenção '+yr,values:rows.map(d=>d.m),color:COLORS.orange},{name:'Balanço '+yr,values:rows.map(d=>d.result),color:COLORS.green}];
   }else{
     const ys=y==='all'?years:[String(y)]; labels=ys;
-    series=[{name:'Receita',values:ys.map(yr=>periodStats(yr,p.start,p.end).rev),color:COLORS.blue},{name:'Custos',values:ys.map(yr=>{const s=periodStats(yr,p.start,p.end);return s.fix+s.maint}),color:COLORS.orange},{name:'Balanço',values:ys.map(yr=>periodStats(yr,p.start,p.end).balance),color:COLORS.green}];
+    series=[{name:'Receita',values:ys.map(yr=>periodStats(yr,p.start,p.end).rev),color:COLORS.blue},{name:'Custos fixos',values:ys.map(yr=>periodStats(yr,p.start,p.end).fix),color:COLORS.red},{name:'Manutenção',values:ys.map(yr=>periodStats(yr,p.start,p.end).maint),color:COLORS.orange},{name:'Balanço',values:ys.map(yr=>periodStats(yr,p.start,p.end).balance),color:COLORS.green}];
   }
   makeLegend(series); lineChart(qs('mainChart'),labels,series);
   barChart(qs('annualRevenueChart'),years,years.map(yr=>sumPeriod(DATA.revenue[yr],p.start,p.end)),{color:COLORS.blue,name:'Receita no período'});
