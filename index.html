@@ -490,7 +490,7 @@ function renderOverview(){
   if(view==='monthly'){
     const yr=y==='all'?years[years.length-1]:String(y); labels=p.indices.map(i=>MONTHS[i]);
     const rows=p.indices.map(i=>getMonthData(yr,i));
-    series=[{name:'Receita '+yr,values:rows.map(d=>d.r),color:COLORS.blue},{name:'Custos '+yr,values:rows.map(d=>d.total),color:COLORS.orange},{name:'Balanço '+yr,values:rows.map(d=>d.result),color:COLORS.green}];
+    series=[{name:'Receita '+yr,values:rows.map(d=>d.r),color:COLORS.blue},{name:'Custos fixos '+yr,values:rows.map(d=>d.f),color:COLORS.orange},{name:'Manutenção '+yr,values:rows.map(d=>d.m),color:COLORS.purple},{name:'Balanço '+yr,values:rows.map(d=>d.result),color:COLORS.green}];
   }else{
     const ys=y==='all'?years:[String(y)]; labels=ys;
     series=[{name:'Receita',values:ys.map(yr=>periodStats(yr,p.start,p.end).rev),color:COLORS.blue},{name:'Custos',values:ys.map(yr=>{const s=periodStats(yr,p.start,p.end);return s.fix+s.maint}),color:COLORS.orange},{name:'Balanço',values:ys.map(yr=>periodStats(yr,p.start,p.end).balance),color:COLORS.green}];
