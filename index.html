@@ -220,7 +220,7 @@ let cloudUser=null;
 
 async function loadCloudOverrides(){
   if(!cloudUser) return {};
-  const {data,error}=await supabaseClient.from('airbnb_dashboard').select('ano,mes,valor,tipo,categoria').eq('user_id',cloudUser.id);
+  const {data,error}=await supabaseClient.from('airbnb_dashboard').select('id,ano,mes,valor,tipo,categoria').eq('user_id',cloudUser.id).order('id',{ascending:true});
   if(error){console.error('Supabase load error',error);return {}}
   const o={};
   (data||[]).forEach(row=>{
@@ -230,6 +230,9 @@ async function loadCloudOverrides(){
       const name=row.categoria||'';o.fixedCategory[y][name]=o.fixedCategory[y][name]||{};o.fixedCategory[y][name][m]=Number(row.valor);
     }else{o[t]=o[t]||{};o[t][y]=o[t][y]||{};o[t][y][m]=Number(row.valor)}
   });
+  // O banco pode conter lançamentos antigos duplicados para a mesma célula.
+  // A consulta agora vem ordenada pelo ID, então o último lançamento salvo
+  // sempre prevalece de forma determinística em todos os recarregamentos.
   cloudOverrides=o;cloudReady=true;return o;
 }
 function legacyOverrides(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){return {}}}
