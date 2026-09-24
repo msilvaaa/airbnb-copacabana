@@ -419,7 +419,7 @@ function openChartModal(el){
     html+='<div class="detail-extra">';
     html+='<div class="detail-extra-box"><div class="detail-extra-label">Mediana</div><div class="detail-extra-value">'+chartNumber(median)+'</div><div class="detail-period">'+indexed.length+' período(s) com dados</div></div>';
     html+='<div class="detail-extra-box"><div class="detail-extra-label">Menor valor</div><div class="detail-extra-value">'+(worst?chartNumber(worst.v):'—')+'</div><div class="detail-period">'+(worst?meta.labels[worst.i]:'—')+'</div></div>';
-    html+='<div class="detail-extra-box"><div class="detail-extra-label">Variação no intervalo</div><div class="detail-extra-value '+(change==null?'':change>=0?'up':'down')+'">'+(change==null?'—':pct(change))+'</div><div class="detail-period">'+(first?meta.labels[first.i]:'—')+' → '+(last?meta.labels[last.i]:'—')+'</div></div>';
+    html+='<div class="detail-box"><div class="detail-label">Variação no intervalo</div><div class="detail-value '+(change==null?'':change>=0?'up':'down')+'">'+(change==null?'—':pct(change))+'</div><div class="detail-period">'+(first?meta.labels[first.i]:'—')+' → '+(last?meta.labels[last.i]:'—')+'</div></div>';
     html+='<div class="detail-extra-box"><div class="detail-extra-label">Maior valor</div><div class="detail-extra-value">'+(best?chartNumber(best.v):'—')+'</div><div class="detail-period">'+(best?meta.labels[best.i]:'—')+'</div></div>';
     html+='</div></div>';
   });
