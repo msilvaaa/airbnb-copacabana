@@ -89,7 +89,7 @@ body.dark{--bg:#0b1220;--card:#111827;--ink:#f3f4f6;--muted:#9ca3af;--line:#2430
 .detail-mini{font-size:10px;color:var(--muted)}
 .detail-mini strong{display:block;color:var(--ink);font-size:12px;margin-top:2px}
 .detail-extra{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 14px}
-.detail-extra-box{background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:9px}.detail-extra-box.variation-box{padding:10px;border-radius:11px}.detail-extra-box.variation-box .detail-extra-label{font-size:10px;font-weight:800}.detail-extra-box.variation-box .detail-extra-value{font-size:14px;margin-top:3px}
+.detail-extra-box{background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:9px}
 .detail-extra-label{font-size:9px;color:var(--muted);text-transform:uppercase;font-weight:850}
 .detail-extra-value{font-size:12px;font-weight:900;margin-top:3px}
 .detail-extra-value.up{color:var(--green)}.detail-extra-value.down{color:var(--red)}
@@ -419,7 +419,7 @@ function openChartModal(el){
     html+='<div class="detail-extra">';
     html+='<div class="detail-extra-box"><div class="detail-extra-label">Mediana</div><div class="detail-extra-value">'+chartNumber(median)+'</div><div class="detail-period">'+indexed.length+' período(s) com dados</div></div>';
     html+='<div class="detail-extra-box"><div class="detail-extra-label">Menor valor</div><div class="detail-extra-value">'+(worst?chartNumber(worst.v):'—')+'</div><div class="detail-period">'+(worst?meta.labels[worst.i]:'—')+'</div></div>';
-    html+='<div class="detail-extra-box variation-box"><div class="detail-extra-label">Variação no intervalo</div><div class="detail-extra-value '+(change==null?'':change>=0?'up':'down')+'">'+(change==null?'—':pct(change))+'</div><div class="detail-period">'+(first?meta.labels[first.i]:'—')+' → '+(last?meta.labels[last.i]:'—')+'</div></div>';
+    html+='<div class="detail-extra-box"><div class="detail-extra-label">Variação no intervalo</div><div class="detail-extra-value '+(change==null?'':change>=0?'up':'down')+'">'+(change==null?'—':pct(change))+'</div><div class="detail-period">'+(first?meta.labels[first.i]:'—')+' → '+(last?meta.labels[last.i]:'—')+'</div></div>';
     html+='<div class="detail-extra-box"><div class="detail-extra-label">Maior valor</div><div class="detail-extra-value">'+(best?chartNumber(best.v):'—')+'</div><div class="detail-period">'+(best?meta.labels[best.i]:'—')+'</div></div>';
     html+='</div></div>';
   });
@@ -434,7 +434,7 @@ function openChartModal(el){
   if(intervalRows.length){
     html+='<div class="detail-extra" style="margin-top:4px">';
     intervalRows.forEach(x=>{
-      html+='<div class="detail-extra-box variation-box"><div class="detail-extra-label">Variação · '+x.name+'</div><div class="detail-extra-value '+(x.change==null?'':x.change>=0?'up':'down')+'">'+(x.change==null?'—':pct(x.change))+'</div></div>';
+      html+='<div class="detail-box"><div class="detail-label">Variação · '+x.name+'</div><div class="detail-value '+(x.change==null?'':x.change>=0?'up':'down')+'">'+(x.change==null?'—':pct(x.change))+'</div></div>';
     });
     html+='</div>';
   }
