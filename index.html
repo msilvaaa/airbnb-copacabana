@@ -432,6 +432,7 @@ function openChartModal(el){
   });
   html+='</tbody></table>';
   details.innerHTML=html;
+  details.querySelectorAll('.detail-label').forEach(label=>{if(label.textContent.trim().startsWith('Variação ·'))label.closest('.detail-box')?.remove();});
 
   modal.classList.add('open');
   modal.setAttribute('aria-hidden','false');
