@@ -483,7 +483,7 @@ function periodBounds(){
 function periodLabel(){const p=periodBounds();return p.start===0&&p.end===11?'Ano completo':MONTHS[p.start]+(p.start===p.end?'':' a '+MONTHS[p.end])}
 function sumPeriod(arr,start,end){const vals=(arr||[]).slice(start,end+1).filter(v=>v!=null&&Number.isFinite(v));return vals.length?vals.reduce((a,b)=>a+b,0):null}
 function periodStats(y,start,end){let rev=0,fix=0,maint=0,balance=0,bn=0;for(let i=start;i<=end;i++){const d=getMonthData(String(y),i);if(d.r!=null)rev+=d.r;if(d.f!=null)fix+=d.f;if(d.m!=null)maint+=d.m;if(d.result!=null){balance+=d.result;bn++}}return {rev,fix,maint,balance:bn?balance:null,margin:rev&&bn?balance/rev:null,bn}}
-function categoryTotalsRange(y,start,end){const cats={},ys=y==='all'?years:[String(y)];ys.forEach(yr=>(DATA.fixedCategories[yr]||[]).forEach(c=>{for(let i=start;i<=end;i++){const v=c.values?.[i];if(v!=null)cats[c.name]=(cats[c.name]||0)+v}}));return cats}
+function categoryTotalsRange(y,start,end){const cats={},ys=y==='all'?years:[String(y)];ys.forEach(yr=>(DATA.fixedCategories[yr]||[]).forEach(c=>{const name=canonicalCategoryName(c.name);for(let i=start;i<=end;i++){const v=c.values?.[i];if(v!=null&&Number.isFinite(Number(v)))cats[name]=(cats[name]||0)+Number(v)}}));return cats}
 function setSelects(){
   const currentYear=qs('yearSelect').value;
   const currentStart=qs('monthStartSelect').value;
