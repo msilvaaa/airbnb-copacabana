@@ -425,19 +425,6 @@ function openChartModal(el){
   });
   html+='</div>';
 
-  const intervalRows=meta.series.map(s=>{
-    const ix=s.values.map((v,i)=>({v,i})).filter(x=>x.v!=null && Number.isFinite(x.v));
-    if(ix.length<2)return null;
-    const first=ix[0],last=ix[ix.length-1];
-    return {name:s.name,change:first.v!==0?(last.v-first.v)/Math.abs(first.v):null};
-  }).filter(Boolean);
-  if(intervalRows.length){
-    html+='<div class="detail-extra" style="margin-top:4px">';
-    intervalRows.forEach(x=>{
-      html+='<div class="detail-box"><div class="detail-label">Variação · '+x.name+'</div><div class="detail-value '+(x.change==null?'':x.change>=0?'up':'down')+'">'+(x.change==null?'—':pct(x.change))+'</div></div>';
-    });
-    html+='</div>';
-  }
   html+='<h3>Dados por período</h3>';
   html+='<table class="detail-table"><thead><tr><th>Período</th>'+meta.series.map(s=>'<th>'+s.name+'</th>').join('')+'</tr></thead><tbody>';
   meta.labels.forEach((lab,i)=>{
