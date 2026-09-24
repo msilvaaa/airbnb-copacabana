@@ -150,6 +150,10 @@ body.dark{--bg:#0b1220;--card:#111827;--ink:#f3f4f6;--muted:#9ca3af;--line:#2430
 .controls .ctrl:nth-child(2) label,.controls .ctrl:nth-child(3) label{color:#2563eb}
 .controls .ctrl:nth-child(2) select,.controls .ctrl:nth-child(3) select{border-color:#bfdbfe;background:#f8fbff}
 body.dark .controls .ctrl:nth-child(2) select,body.dark .controls .ctrl:nth-child(3) select{background:#0f172a;border-color:#334155}
+
+/* Remove definitivamente as setas SOMENTE dos campos Valor e Somar ao valor. */
+.edit-modal input#editValue[type="number"],.edit-modal input#editAddValue[type="number"]{-webkit-appearance:textfield!important;appearance:textfield!important;-moz-appearance:textfield!important}
+.edit-modal input#editValue[type="number"]::-webkit-inner-spin-button,.edit-modal input#editValue[type="number"]::-webkit-outer-spin-button,.edit-modal input#editAddValue[type="number"]::-webkit-inner-spin-button,.edit-modal input#editAddValue[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none!important;appearance:none!important;display:none!important;width:0!important;height:0!important;margin:0!important;padding:0!important}
 </style>
 </head>
 <body>
