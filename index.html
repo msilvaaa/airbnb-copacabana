@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<!-- Vercel Git deploy trigger: 2026-09-24 balance single chart v9 -->
+<!-- Vercel Git deploy trigger: 2026-09-24 balance single chart v10 -->
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="application-version" content="2026-09-24-balance-single-chart-v9">
+<meta name="application-version" content="2026-09-24-balance-single-chart-v10">
 <title>Airbnb - Copacabana Rio de Janeiro</title>
 <style>
 :root{--bg:#f4f7fb;--card:#fff;--ink:#152033;--muted:#6b7280;--line:#e5eaf1;--blue:#2563eb;--green:#059669;--orange:#d97706;--red:#dc2626;--light-red:#f87171;--wine:#7f1d1d;--pink:#ec4899;--purple:#7c3aed;--shadow:0 12px 34px rgba(15,23,42,.08);--radius:18px}
@@ -355,7 +355,7 @@ const CHART_META=new WeakMap();
 function rememberChart(el,title,labels,series,type='chart'){
   CHART_META.set(el,{title,labels:[...labels],series:series.map(s=>({name:s.name||'',color:s.color||'',values:[...(s.values||[])]})),type});
   el.dataset.chartReady='1';
-  el.onclick=e=>{ if(e.target.closest('circle,rect,path') || e.currentTarget===e.target || e.target.tagName==='svg') openChartModal(el); };
+  el.onclick=e=>{ openChartModal(el); };
 }
 function chartNumber(v){return v==null?'—':fmt(v)}
 function chartStats(values){
@@ -375,6 +375,15 @@ function openChartModal(el){
     clone.removeAttribute('width');clone.removeAttribute('height');
     clone.style.width='100%';clone.style.height='100%';
     clone.style.minHeight=window.innerWidth<=650?'350px':'520px';
+    visual.appendChild(clone);
+  }else{
+    const clone=el.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.style.width='100%';
+    clone.style.height='100%';
+    clone.style.minHeight=window.innerWidth<=650?'350px':'520px';
+    clone.style.cursor='default';
+    clone.onclick=null;
     visual.appendChild(clone);
   }
 
