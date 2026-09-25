@@ -562,7 +562,7 @@ function initMonthPickers(){
     const renderYears=()=>{
       const list=panel.querySelector('.month-picker-list'),back=panel.querySelector('.month-picker-back'),title=panel.querySelector('.month-picker-title');
       back.classList.add('hidden');title.textContent='Selecionar ano';
-      list.innerHTML=years.slice().reverse().map(y=>'<button type="button" class="month-picker-item month-picker-year" data-year="'+y+'"><span>▣ &nbsp;'+y+'</span><span class="month-picker-arrow">›</span></button>').join('');
+      list.innerHTML=years.slice().reverse().map(y=>'<button type="button" class="month-picker-item month-picker-year" data-year="'+y+'"><span>'+y+'</span><span class="month-picker-arrow">›</span></button>').join('');
       list.querySelectorAll('[data-year]').forEach(b=>b.addEventListener('click',()=>renderMonths(b.dataset.year)));
     };
     const renderMonths=(year)=>{
