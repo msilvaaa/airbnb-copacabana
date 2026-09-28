@@ -268,8 +268,7 @@ let cloudUser=null;
 
 async function getAuthAccessToken(){
   try{
-    const {data}=await neonAuthClient.auth.getSession();
-    return data?.session?.access_token || null;
+    return null;
   }catch(e){
     return null;
   }
@@ -339,9 +338,10 @@ async function migrateLegacyIfNeeded(){
 }
 async function refreshCloudData(){
   try{
-    const {data:{session}}=await neonAuthClient.auth.getSession();
-    if(!session?.user) return false;
-    cloudUser=session.user;
+    const session=await neonAuthRequest('get-session',{method:'GET'});
+    const user=session?.user||session?.session?.user;
+    if(!user) return false;
+    cloudUser=user;
     await loadCloudOverrides();
     DATA=loadMergedData();
     years=getYears();
@@ -354,9 +354,10 @@ async function refreshCloudData(){
 }
 async function initCloud(){
   try{
-    const {data:{session}}=await neonAuthClient.auth.getSession();
-    if(session?.user){
-      cloudUser=session.user;
+    const session=await neonAuthRequest('get-session',{method:'GET'});
+    const user=session?.user||session?.session?.user;
+    if(user){
+      cloudUser=user;
       await migrateLegacyIfNeeded();
       await loadCloudOverrides();
       DATA=loadMergedData();
@@ -803,8 +804,13 @@ qs('resetSavedBtn').addEventListener('click',async()=>{
   if(password===null)return;
   if(!username.trim()||!password){qs('saveState').textContent='Usuário ou senha não informados. Exclusão cancelada.';return}
   qs('saveState').textContent='Validando usuário e senha...';
-  const {data:authData,error:authError}=await neonAuthClient.auth.signInWithPassword({email:username.trim(),password});
-  if(authError||!authData?.user){qs('saveState').textContent='Usuário ou senha incorretos. Exclusão cancelada.';return}
+  let authData;
+  try{
+    await neonAuthRequest('sign-in/email',{method:'POST',body:JSON.stringify({email:username.trim(),password,rememberMe:false})});
+    const session=await neonAuthRequest('get-session',{method:'GET'});
+    authData={user:session?.user||session?.session?.user};
+  }catch(e){authData=null}
+  if(!authData?.user){qs('saveState').textContent='Usuário ou senha incorretos. Exclusão cancelada.';return}
   qs('saveState').textContent='Apagando dados do Neon...';
   const ok=await resetOverrides();
   setSelects();renderAll();
@@ -821,7 +827,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&qs('chartModal').classList.contains('open'))closeChartModal();if(e.key==='Escape'&&qs('cleaningModal').classList.contains('open'))closeCleaningModal();
 });
 window.addEventListener('afterprint',()=>document.body.classList.remove('chart-modal-printing'));
-qs('editModalClose').addEventListener('click',()=>qs('editModal').classList.remove('open'));qs('editBtn').addEventListener('click',openEditor);qs('logoutBtn').addEventListener('click',logoutEditor);qs('forgotPassBtn').addEventListener('click',resetNeonPassword);qs('saveNewPasswordBtn').addEventListener('click',saveRecoveredPassword);qs('toggleNewPassword').addEventListener('click',()=>{const i=qs('newPassword'),b=qs('toggleNewPassword');i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'👁':'🙈'});neonAuthClient.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')setTimeout(handlePasswordRecovery,0)});qs('loginForm').addEventListener('submit',e=>{e.preventDefault();authenticateEditor()});qs('cancelLoginBtn').addEventListener('click',()=>qs('loginModal').classList.remove('open'));qs('loginModal').addEventListener('click',e=>{if(e.target===qs('loginModal'))qs('loginModal').classList.remove('open')});qs('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')authenticateEditor()});qs('loginUser').addEventListener('keydown',e=>{if(e.key==='Enter')qs('loginPass').focus()});qs('togglePass').addEventListener('click',()=>{const i=qs('loginPass'),b=qs('togglePass');i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'👁':'🙈'});qs('cancelEditBtn').addEventListener('click',()=>qs('editModal').classList.remove('open'));qs('editModal').addEventListener('click',e=>{if(e.target===qs('editModal'))qs('editModal').classList.remove('open')});['editYear','editMonth','editType','editCategory'].forEach(id=>{const el=qs(id);if(el)el.addEventListener('change',id==='editType'?updateEditorMode:(e)=>{syncEditValue();syncFixedTotalPreview()})});
+qs('editModalClose').addEventListener('click',()=>qs('editModal').classList.remove('open'));qs('editBtn').addEventListener('click',openEditor);qs('logoutBtn').addEventListener('click',logoutEditor);qs('forgotPassBtn').addEventListener('click',resetNeonPassword);qs('saveNewPasswordBtn').addEventListener('click',saveRecoveredPassword);qs('toggleNewPassword').addEventListener('click',()=>{const i=qs('newPassword'),b=qs('toggleNewPassword');i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'👁':'🙈'});qs('loginForm').addEventListener('submit',e=>{e.preventDefault();authenticateEditor()});qs('cancelLoginBtn').addEventListener('click',()=>qs('loginModal').classList.remove('open'));qs('loginModal').addEventListener('click',e=>{if(e.target===qs('loginModal'))qs('loginModal').classList.remove('open')});qs('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')authenticateEditor()});qs('loginUser').addEventListener('keydown',e=>{if(e.key==='Enter')qs('loginPass').focus()});qs('togglePass').addEventListener('click',()=>{const i=qs('loginPass'),b=qs('togglePass');i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'👁':'🙈'});qs('cancelEditBtn').addEventListener('click',()=>qs('editModal').classList.remove('open'));qs('editModal').addEventListener('click',e=>{if(e.target===qs('editModal'))qs('editModal').classList.remove('open')});['editYear','editMonth','editType','editCategory'].forEach(id=>{const el=qs(id);if(el)el.addEventListener('change',id==='editType'?updateEditorMode:(e)=>{syncEditValue();syncFixedTotalPreview()})});
 ['yearSelect','monthStartSelect','monthEndSelect','viewSelect'].forEach(id=>qs(id).addEventListener('change',()=>{
   const yearSel=qs('yearSelect'),startSel=qs('monthStartSelect'),endSel=qs('monthEndSelect'),viewSel=qs('viewSelect');
   if(id==='yearSelect'){
