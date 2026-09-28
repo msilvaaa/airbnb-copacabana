@@ -1,20 +1,29 @@
 const { neon } = require("@neondatabase/serverless");
 
 const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null;
-const SUPABASE_URL = process.env.SUPABASE_URL || "https://yayfspvqwuefbtiyttnr.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_iOxhPw26ASUO9WaNcc7HfA_dR1XjyKp";
+const NEON_AUTH_URL = process.env.NEON_AUTH_URL || "https://ep-holy-frost-b4fodald.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
+const NEON_AUTH_JWKS_URL = NEON_AUTH_URL.replace(/\/$/, "") + "/.well-known/jwks";
+
+let jwksPromise;
+async function getJwks() {
+  if (!jwksPromise) {
+    jwksPromise = import("jose").then(({ createRemoteJWKSet }) => createRemoteJWKSet(new URL(NEON_AUTH_JWKS_URL)));
+  }
+  return jwksPromise;
+}
 
 async function authenticate(req) {
   const match = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i);
   if (!match) return null;
-  const response = await fetch(SUPABASE_URL + "/auth/v1/user", {
-    headers: {
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      Authorization: "Bearer " + match[1]
-    }
-  });
-  if (!response.ok) return null;
-  return response.json();
+  try {
+    const { jwtVerify } = await import("jose");
+    const jwks = await getJwks();
+    const { payload } = await jwtVerify(match[1], jwks);
+    return payload?.sub ? { id: String(payload.sub), email: payload.email || null } : null;
+  } catch (error) {
+    console.error("Neon Auth verification error:", error);
+    return null;
+  }
 }
 
 function setJson(res, status, payload) {
