@@ -1,7 +1,7 @@
 const { neon } = require("@neondatabase/serverless");
 
 const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null;
-const NEON_AUTH_URL = process.env.NEON_AUTH_URL || "https://ep-holy-frost-b4fodald.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
+const NEON_AUTH_URL = process.env.NEON_AUTH_BASE_URL || process.env.NEON_AUTH_URL || "https://ep-weathered-smoke-b4g1qnj9.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
 const NEON_AUTH_JWKS_URL = NEON_AUTH_URL.replace(/\/$/, "") + "/.well-known/jwks";
 
 let jwksPromise;
@@ -12,16 +12,33 @@ async function getJwks() {
   return jwksPromise;
 }
 
-async function authenticate(req) {
-  const match = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i);
-  if (!match) return null;
+
+async function authenticateRequest(req) {
+  const bearer = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i);
+  if (bearer) {
+    try {
+      const { jwtVerify } = await import("jose");
+      const jwks = await getJwks();
+      const { payload } = await jwtVerify(bearer[1], jwks);
+      if (payload?.sub) return { id: String(payload.sub), email: payload.email || null };
+    } catch (error) {
+      console.error("Neon Auth JWT verification error:", error);
+    }
+  }
+
+  const cookie = req.headers.cookie;
+  if (!cookie) return null;
   try {
-    const { jwtVerify } = await import("jose");
-    const jwks = await getJwks();
-    const { payload } = await jwtVerify(match[1], jwks);
-    return payload?.sub ? { id: String(payload.sub), email: payload.email || null } : null;
+    const response = await fetch(NEON_AUTH_URL.replace(/\/$/, "") + "/get-session", {
+      method: "GET",
+      headers: { cookie, accept: "application/json" }
+    });
+    if (!response.ok) return null;
+    const data = await response.json().catch(() => ({}));
+    const user = data?.user || data?.session?.user;
+    return user?.id ? { id: String(user.id), email: user.email || null } : null;
   } catch (error) {
-    console.error("Neon Auth verification error:", error);
+    console.error("Neon Auth session verification error:", error);
     return null;
   }
 }
