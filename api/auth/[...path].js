@@ -1,4 +1,4 @@
-const NEON_AUTH_URL = process.env.NEON_AUTH_URL || "https://ep-holy-frost-b4fodald.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
+const NEON_AUTH_URL = process.env.NEON_AUTH_BASE_URL || process.env.NEON_AUTH_URL || "https://ep-weathered-smoke-b4g1qnj9.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
 
 function normalizePath(value) {
   const parts = Array.isArray(value) ? value : (value ? [value] : []);
