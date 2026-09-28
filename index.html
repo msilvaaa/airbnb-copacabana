@@ -274,9 +274,7 @@ async function getAuthAccessToken(){
   }
 }
 async function apiRequest(method,body){
-  const token=await getAuthAccessToken();
-  if(!token) throw new Error('not_authenticated');
-  const options={method,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}};
+  const options={method,credentials:'include',headers:{'Content-Type':'application/json'}};
   if(body!==undefined) options.body=JSON.stringify(body);
   const response=await fetch('/api/airbnb-dashboard',options);
   const payload=await response.json().catch(()=>({}));
