@@ -761,7 +761,9 @@ async function authenticateEditor(){
     qs('editYear').value=(years.includes(editorYear)?editorYear:(qs('yearSelect').value==='all'?'2027':qs('yearSelect').value));
     qs('editMonth').value=String(currentMonth);qs('editType').value='revenue';updateEditorMode();qs('editModal').classList.add('open');
   }catch(e){
-    qs('loginError').textContent='E-mail ou senha incorretos.';
+    const detail=e?.message?String(e.message):'Falha ao autenticar';
+    qs('loginError').textContent=e?.status?('Falha no Neon Auth ('+e.status+'): '+detail):detail;
+    console.error('Neon Auth login error:',e);
     qs('loginPass').focus();
   }
 }
