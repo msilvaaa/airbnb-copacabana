@@ -437,17 +437,32 @@ function formatRating(v){return v==null?'—':v.toLocaleString('pt-BR',{minimumF
 function renderRating(){const v=calculateRating(getRatingCounts());const el=document.querySelector('.rating');if(el)el.textContent='★ '+formatRating(v);}
 function updateRatingPreview(){const c={};[5,4,3,2,1].forEach(s=>c[s]=Math.max(0,Math.floor(Number(qs('rating'+s).value)||0)));const n=c[5]+c[4]+c[3]+c[2]+c[1],v=calculateRating(c);qs('ratingResult').textContent='Nota calculada: '+(v==null?'—':formatRating(v))+' · '+n+' avaliações';}
 async function saveRating(c){
-  if(cloudReady&&cloudUser){
+  // A nota editada precisa sempre ir para o Neon. Não usa localStorage como
+  // fallback quando existe uma conta autenticada, pois isso faria a alteração
+  // ficar presa apenas ao aparelho que realizou a edição.
+  if(cloudUser){
     try{
       const payload=await apiRequest('POST',{ratingCounts:{5:Number(c[5]),4:Number(c[4]),3:Number(c[3]),2:Number(c[2]),1:Number(c[1])}});
-      if(!payload?.ok) throw new Error('Neon não confirmou o salvamento da nota.');
-      await loadCloudOverrides();
-      const saved=getRatingCounts();
+      if(!payload?.ok || !Array.isArray(payload.rows) || payload.rows.length<5) throw new Error('Neon não confirmou o salvamento da nota.');
+      const saved={};
+      payload.rows.forEach(row=>{
+        if(row.tipo==='rating') saved[String(row.categoria)]=Number(row.valor);
+      });
       if(![5,4,3,2,1].every(s=>Number(saved[s])===Number(c[s]))) throw new Error('Neon retornou valores diferentes dos salvos.');
+      cloudOverrides=cloudOverrides||{};
+      cloudOverrides.rating=saved;
+      cloudReady=true;
+      saveCloudSnapshot();
+      DATA=loadMergedData();
+      years=getYears();
       return true;
-    }catch(e){console.error('Rating save error:',e);return false;}
+    }catch(e){
+      console.error('Rating save error:',e);
+      return false;
+    }
   }
-  const o=loadOverrides();o.rating={};[5,4,3,2,1].forEach(s=>o.rating[String(s)]=Number(c[s]));return saveOverrides(o);
+  // Sem autenticação, não grava localmente: a nota é um dado compartilhado.
+  return false;
 }
 async function clearRating(){if(cloudReady&&cloudUser){try{for(const s of [5,4,3,2,1])await apiRequest('DELETE',{ano:2021,mes:0,tipo:'rating',categoria:String(s)});await loadCloudOverrides();return true;}catch(e){console.error(e);return false;}}const o=loadOverrides();delete o.rating;saveOverrides(o);return true;}
 function getYears(){return yearsFrom(DATA)}
