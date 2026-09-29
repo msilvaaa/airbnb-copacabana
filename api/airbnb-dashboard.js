@@ -60,6 +60,13 @@ async function ensureRatingTable() {
     VALUES (1, 114, 3, 0, 0, 0)
     ON CONFLICT (id) DO NOTHING
   `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS public.airbnb_editor_state (
+      user_id uuid PRIMARY KEY,
+      state jsonb NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
 }
 function ratingRows(r) {
   if (!r) return [];
@@ -99,7 +106,10 @@ module.exports = async function handler(req, res) {
         ORDER BY id ASC
       `;
       const ratings = await readRatingRows();
-      return setJson(res, 200, { rows: rows.concat(ratings) });
+      let editorState = null;
+      const stateRows = await sql`SELECT state FROM public.airbnb_editor_state WHERE user_id = ${user.id}::uuid`;
+      if (stateRows[0]?.state) editorState = stateRows[0].state;
+      return setJson(res, 200, { rows: rows.concat(ratings), editorState });
     }
     let body = req.body;
     if (typeof body === "string") {
@@ -108,6 +118,16 @@ module.exports = async function handler(req, res) {
     body = body || {};
 
     if (req.method === "POST") {
+      if (body.editorState && typeof body.editorState === "object") {
+        const state=body.editorState;
+        await sql`
+          INSERT INTO public.airbnb_editor_state (user_id, state, updated_at)
+          VALUES (${user.id}::uuid, ${JSON.stringify(state)}::jsonb, now())
+          ON CONFLICT (user_id) DO UPDATE SET
+            state = EXCLUDED.state,
+            updated_at = now()
+        `;
+      }
       if (body.ratingCounts && typeof body.ratingCounts === "object") {
         const counts = {};
         [5,4,3,2,1].forEach(s => { counts[s] = Number(body.ratingCounts[s]); });
