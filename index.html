@@ -334,6 +334,42 @@ async function liveRatingRequest(method='GET',ratingCounts){
   if(!response.ok) throw new Error(payload?.error||('HTTP '+response.status));
   return payload;
 }
+async function loadSharedDashboardData(){
+  // A tela principal usa sempre a mesma fonte compartilhada.
+  // O login do editor não deve trocar os números exibidos.
+  const payload=await apiRequest('GET',undefined,true);
+  const data=payload.rows||[];
+  const o={};
+  data.forEach(row=>{
+    const y=String(row.ano),m=String(row.mes),t=row.tipo;
+    if(t==='rating'){
+      o.rating=o.rating||{};
+      o.rating[String(row.categoria||'')]=Number(row.valor);
+      return;
+    }
+    if(t==='fixedCategory' && String(row.categoria||'').startsWith('__airbnb_rating_')){
+      o.rating=o.rating||{};
+      o.rating[String(row.categoria).replace('__airbnb_rating_','')]=Number(row.valor);
+      return;
+    }
+    if(t==='fixedCategory'){
+      o.fixedCategory=o.fixedCategory||{};
+      o.fixedCategory[y]=o.fixedCategory[y]||{};
+      const name=row.categoria||'';
+      o.fixedCategory[y][name]=o.fixedCategory[y][name]||{};
+      o.fixedCategory[y][name][m]=Number(row.valor);
+    }else{
+      o[t]=o[t]||{};
+      o[t][y]=o[t][y]||{};
+      o[t][y][m]=Number(row.valor);
+    }
+  });
+  // Do not replace a newer locally-known rating; dedicated rating endpoint
+  // remains the authoritative source for that piece.
+  cloudOverrides=o;
+  cloudReady=true;
+  return o;
+}
 async function syncLiveRating(){
   const payload=await liveRatingRequest('GET');
   const rating={
@@ -1036,8 +1072,6 @@ function resetFiltersToDefault(){
 // Ao abrir/reabrir o site, aguarda a leitura do Neon antes de desenhar
 // os valores. Assim o usuário não vê um valor provisório que muda sozinho.
 async function startDashboard(){
-  // Uma única leitura inicial. Depois de renderizar, os valores ficam estáveis
-  // e não há atualização automática dos gráficos enquanto a página estiver aberta.
   const snap=loadCloudSnapshot();
   const fallback=()=>{
     if(snap?.overrides){
@@ -1051,16 +1085,8 @@ async function startDashboard(){
     }
   };
   try{
-    const session=await neonAuthRequest('get-session',{method:'GET'});
-    const user=session?.user||session?.session?.user;
-    if(user){
-      cloudUser=user;
-      await migrateLegacyIfNeeded();
-      await loadCloudOverrides(false);
-    }else{
-      await loadCloudOverrides(true);
-    }
-    if(!cloudReady){fallback();return;}
+    await loadSharedDashboardData();
+    await syncLiveRating();
     DATA=loadMergedData();
     years=getYears();
     resetFiltersToDefault();
