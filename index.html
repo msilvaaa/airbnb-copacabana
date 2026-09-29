@@ -331,6 +331,11 @@ async function loadCloudOverrides(allowPublic=false){
     data.forEach(row=>{
       const y=String(row.ano),m=String(row.mes),t=row.tipo;
       if(t==='rating'){o.rating=o.rating||{};o.rating[String(row.categoria||'')]=Number(row.valor);return;}
+      if(t==='fixedCategory' && String(row.categoria||'').startsWith('__airbnb_rating_')){
+        o.rating=o.rating||{};
+        o.rating[String(row.categoria).replace('__airbnb_rating_','')]=Number(row.valor);
+        return;
+      }
       if(t==='fixedCategory'){
         o.fixedCategory=o.fixedCategory||{};o.fixedCategory[y]=o.fixedCategory[y]||{};
         const name=row.categoria||'';o.fixedCategory[y][name]=o.fixedCategory[y][name]||{};o.fixedCategory[y][name][m]=Number(row.valor);
@@ -458,7 +463,7 @@ async function saveRating(c){
     throw e;
   }
 }
-async function clearRating(){if(cloudReady&&cloudUser){try{for(const s of [5,4,3,2,1])await apiRequest('DELETE',{ano:2021,mes:0,tipo:'rating',categoria:String(s)});await loadCloudOverrides();return true;}catch(e){console.error(e);return false;}}const o=loadOverrides();delete o.rating;saveOverrides(o);return true;}
+async function clearRating(){if(cloudUser){try{for(const s of [5,4,3,2,1]){await apiRequest('DELETE',{ano:2021,mes:0,tipo:'rating',categoria:String(s)});await apiRequest('DELETE',{ano:2021,mes:0,tipo:'fixedCategory',categoria:'__airbnb_rating_'+s});}await loadCloudOverrides(false);return true;}catch(e){console.error(e);return false;}}return false;}
 function getYears(){return yearsFrom(DATA)}
 async function setOverride(type,y,m,v){if(cloudReady&&cloudUser){try{await writeCloudRow(cloudUser,Number(y),Number(m),type,'',Number(v));await loadCloudOverrides();DATA=loadMergedData();years=getYears();return true}catch(e){console.error(e);return false}}const o=loadOverrides();o[type]=o[type]||{};o[type][String(y)]=o[type][String(y)]||{};o[type][String(y)][String(m)]=v;const ok=saveOverrides(o);DATA=loadMergedData();years=getYears();return ok}
 async function clearOverride(type,y,m){

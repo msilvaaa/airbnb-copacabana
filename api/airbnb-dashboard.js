@@ -103,11 +103,16 @@ module.exports = async function handler(req, res) {
         // Substitui a distribuição inteira com INSERTs simples e explícitos.
         // Evita depender de jsonb_to_recordset, que pode gerar 500 em algumas
         // configurações do Postgres/Neon.
-        await sql`DELETE FROM public.airbnb_dashboard WHERE user_id = ${user.id}::uuid AND tipo = 'rating'`;
+        // Não usa um novo valor para a coluna "tipo" que possa estar sujeito
+        // a CHECK/ENUM legado. Reaproveita "fixedCategory", já existente no
+        // schema, usando uma categoria interna exclusiva para as avaliações.
+        await sql`DELETE FROM public.airbnb_dashboard
+          WHERE user_id = ${user.id}::uuid
+            AND (tipo = 'rating' OR (tipo = 'fixedCategory' AND categoria LIKE '__airbnb_rating_%'))`;
         const rows = [];
         for (const r of counts) {
           const inserted = await sql`INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
-            VALUES (${user.id}::uuid, 2021, 0, ${r.value}, 'rating', ${r.star})
+            VALUES (${user.id}::uuid, 2021, 0, ${r.value}, 'fixedCategory', ${'__airbnb_rating_'+r.star})
             RETURNING id, ano, mes, valor, tipo, categoria`;
           if (inserted[0]) rows.push(inserted[0]);
         }
