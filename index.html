@@ -320,6 +320,31 @@ async function apiRequest(method,body,publicRead=false){
   }
   return payload;
 }
+async function liveRatingRequest(method='GET',ratingCounts){
+  const headers={'Content-Type':'application/json'};
+  if(method!=='GET'){
+    const token=await getAuthAccessToken();
+    if(token) headers.Authorization='Bearer '+token;
+  }
+  const url='/api/airbnb-rating?ts='+Date.now();
+  const options={method,credentials:'include',headers,cache:'no-store'};
+  if(ratingCounts) options.body=JSON.stringify({ratingCounts});
+  const response=await fetch(url,options);
+  const payload=await response.json().catch(()=>({}));
+  if(!response.ok) throw new Error(payload?.error||('HTTP '+response.status));
+  return payload;
+}
+async function syncLiveRating(){
+  const payload=await liveRatingRequest('GET');
+  const rating={
+    5:Number(payload.nota_5),4:Number(payload.nota_4),3:Number(payload.nota_3),
+    2:Number(payload.nota_2),1:Number(payload.nota_1)
+  };
+  cloudOverrides=cloudOverrides||{};
+  cloudOverrides.rating=rating;
+  cloudReady=true;
+  return rating;
+}
 async function loadCloudOverrides(allowPublic=false){
   if(!cloudUser && !allowPublic) return {};
   try{
@@ -378,17 +403,16 @@ async function migrateLegacyIfNeeded(){
 }
 async function refreshCloudData(){
   try{
+    await syncLiveRating();
     if(cloudUser){
       const session=await neonAuthRequest('get-session',{method:'GET'});
       const user=session?.user||session?.session?.user;
-      if(!user){cloudUser=null;cloudReady=false;}
-      else{
-        cloudUser=user;
-        await loadCloudOverrides(false);
-      }
+      if(!user){cloudUser=null;}
+      else{cloudUser=user;await loadCloudOverrides(false);}
     }else{
       await loadCloudOverrides(true);
     }
+    await syncLiveRating();
     if(!cloudReady) return false;
     DATA=loadMergedData();
     years=getYears();
@@ -472,24 +496,13 @@ async function saveRating(c){
     throw new Error('Sessão do Neon não está ativa neste dispositivo. Entre novamente.');
   }
   try{
-    const payload=await apiRequest('POST',{ratingCounts:{5:Number(c[5]),4:Number(c[4]),3:Number(c[3]),2:Number(c[2]),1:Number(c[1])}});
+    const payload=await liveRatingRequest('POST',{5:Number(c[5]),4:Number(c[4]),3:Number(c[3]),2:Number(c[2]),1:Number(c[1])});
     if(!payload?.ok) throw new Error(payload?.error||'Neon não confirmou o salvamento da nota.');
-    const returned={};
-    (payload.rows||[]).forEach(row=>{
-      if(row?.tipo==='rating') returned[String(row.categoria)]=Number(row.valor);
-    });
-    // A própria API acabou de gravar e reler a linha no Neon.
-    // Não bloqueamos o salvamento por uma comparação redundante no frontend.
-    if(!Object.keys(returned).length){
-      throw new Error('Neon não devolveu a configuração de avaliações após o salvamento.');
-    }
     cloudOverrides=cloudOverrides||{};
-    cloudOverrides.rating={};
-    [5,4,3,2,1].forEach(s=>{
-      cloudOverrides.rating[String(s)]=Number.isFinite(returned[String(s)])
-        ? returned[String(s)]
-        : Number(c[s]);
-    });
+    cloudOverrides.rating={
+      5:Number(payload.nota_5),4:Number(payload.nota_4),3:Number(payload.nota_3),
+      2:Number(payload.nota_2),1:Number(payload.nota_1)
+    };
     cloudReady=true;
     saveCloudSnapshot();
     await saveEditorState({
@@ -927,7 +940,7 @@ async function clearCategoryOverride(y,m,name){
   const o=loadOverrides();aliases.forEach(n=>{if(o.fixedCategory?.[yr]?.[n]){delete o.fixedCategory[yr][n][String(m)];if(!Object.keys(o.fixedCategory[yr][n]).length)delete o.fixedCategory[yr][n];}});if(o.fixedCategory?.[yr]&&!Object.keys(o.fixedCategory[yr]).length)delete o.fixedCategory[yr];if(o.fixedCategory&&!Object.keys(o.fixedCategory).length)delete o.fixedCategory;saveOverrides(o);DATA=loadMergedData();years=getYears();return true;
 }
 function refreshCategorySelector(){const sel=qs('editCategory');if(!sel)return;const current=sel.value;sel.innerHTML=ensureCategoryNames().map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');if(ensureCategoryNames().includes(current))sel.value=current;}
-async function updateEditorMode(){const t=qs('editType').value,isCat=t==='fixedCategory',isFixed=t==='fixed',isRating=t==='rating';qs('editYearField').classList.toggle('hidden',isRating);qs('editMonthField').classList.toggle('hidden',isRating);qs('editAddValueField').classList.toggle('hidden',isRating);qs('editValueField').classList.toggle('hidden',isRating);qs('ratingField').classList.toggle('hidden',!isRating);qs('editAddValueField').classList.toggle('add-value-under-revenue',['revenue','maintenance','cleaning','financing'].includes(t));qs('editAddValueField').closest('.form-grid').classList.toggle('add-value-below',['revenue','maintenance','cleaning','financing'].includes(t));qs('categoryField').classList.toggle('hidden',!isCat);qs('editFixedTotalField').classList.toggle('hidden',!isFixed);refreshCategorySelector();if(isRating){const c=(cloudEditorState?.type==='rating'&&cloudEditorState?.rating)?cloudEditorState.rating:getRatingCounts();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=Number(c[s]||0));updateRatingPreview();qs('saveState').textContent='Edite a quantidade de avaliações por estrela.';}else{syncEditValue();syncFixedTotalPreview();}}
+async function updateEditorMode(){const t=qs('editType').value,isCat=t==='fixedCategory',isFixed=t==='fixed',isRating=t==='rating';qs('editYearField').classList.toggle('hidden',isRating);qs('editMonthField').classList.toggle('hidden',isRating);qs('editAddValueField').classList.toggle('hidden',isRating);qs('editValueField').classList.toggle('hidden',isRating);qs('ratingField').classList.toggle('hidden',!isRating);qs('editAddValueField').classList.toggle('add-value-under-revenue',['revenue','maintenance','cleaning','financing'].includes(t));qs('editAddValueField').closest('.form-grid').classList.toggle('add-value-below',['revenue','maintenance','cleaning','financing'].includes(t));qs('categoryField').classList.toggle('hidden',!isCat);qs('editFixedTotalField').classList.toggle('hidden',!isFixed);refreshCategorySelector();if(isRating){qs('saveState').textContent='Lendo a nota atual...';try{const c=await syncLiveRating();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=c[s]);}catch(e){console.error('Rating live read error:',e);const c=getRatingCounts();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=c[s]);}updateRatingPreview();qs('saveState').textContent='Edite a quantidade de avaliações por estrela.';}else{syncEditValue();syncFixedTotalPreview();}}
 function syncFixedTotalPreview(){const y=Number(qs('editYear').value),m=Number(qs('editMonth').value);const names=['IPTU','Apartamento','Condomínio','Internet','Light','Naturgy'];let total=0,has=false;names.forEach(name=>{const v=categoryValue(y,m,name);if(v!=null&&Number.isFinite(Number(v))){total+=Number(v);has=true}});const cleaning=DATA.cleaning?.[String(y)]?.[m];if(cleaning!=null&&Number.isFinite(Number(cleaning))){total+=Number(cleaning);has=true}qs('editFixedTotalPreview').value=has?fmt(total):'R$ 0,00';}
 function syncEditValue(){const y=String(qs('editYear').value||''),m=Number(qs('editMonth').value),t=qs('editType').value,o=loadOverrides();
   if(t==='fixedCategory'){refreshCategorySelector();const name=qs('editCategory').value,saved=o.fixedCategory?.[y]?.[name]?.[String(m)],current=categoryValue(y,m,name);qs('editValue').value=saved??(current??'');qs('saveState').textContent=saved!=null?'Existe um lançamento manual salvo para esta categoria.':'Valor original / vazio.';return}
