@@ -119,13 +119,13 @@ module.exports = async function handler(req, res) {
         const exists = await sql`SELECT id FROM public.airbnb_rating_config WHERE id = 1`;
         if (exists.length) {
           await sql`UPDATE public.airbnb_rating_config
-            SET nota_5 = \${values[0]}, nota_4 = \${values[1]}, nota_3 = \${values[2]},
-                nota_2 = \${values[3]}, nota_1 = \${values[4]}, updated_at = now()
+            SET nota_5 = ${values[0]}, nota_4 = ${values[1]}, nota_3 = ${values[2]},
+                nota_2 = ${values[3]}, nota_1 = ${values[4]}, updated_at = now()
             WHERE id = 1`;
         } else {
           await sql`INSERT INTO public.airbnb_rating_config
             (id, nota_5, nota_4, nota_3, nota_2, nota_1, updated_at)
-            VALUES (1, \${values[0]}, \${values[1]}, \${values[2]}, \${values[3]}, \${values[4]}, now())`;
+            VALUES (1, ${values[0]}, ${values[1]}, ${values[2]}, ${values[3]}, ${values[4]}, now())`;
         }
         const current = await sql`SELECT nota_5, nota_4, nota_3, nota_2, nota_1 FROM public.airbnb_rating_config WHERE id = 1`;
         return setJson(res, 200, { ok: true, rows: ratingRows(current[0]) });
