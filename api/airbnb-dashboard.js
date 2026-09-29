@@ -19,9 +19,12 @@ async function authenticateRequest(req) {
   const cookie = req.headers.cookie;
   if (cookie) {
     try {
+      const sessionHeaders = { cookie, accept: "application/json" };
+      if (req.headers.origin) sessionHeaders.origin = req.headers.origin;
+      if (req.headers.referer) sessionHeaders.referer = req.headers.referer;
       const response = await fetch(NEON_AUTH_URL.replace(/\/$/, "") + "/get-session", {
         method: "GET",
-        headers: { cookie, accept: "application/json" }
+        headers: sessionHeaders
       });
       if (response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -29,7 +32,7 @@ async function authenticateRequest(req) {
         if (user?.id) return { id: String(user.id), email: user.email || null };
       }
     } catch (error) {
-      console.error("Neon Auth session verification error:", error);
+      console.error("Neon Auth session verification error:", error?.message || error);
     }
   }
 
@@ -41,7 +44,7 @@ async function authenticateRequest(req) {
       const { payload } = await jwtVerify(bearer[1], jwks);
       if (payload?.sub) return { id: String(payload.sub), email: payload.email || null };
     } catch (error) {
-      console.error("Neon Auth JWT verification error:", error);
+      console.error("Neon Auth JWT verification error:", error?.message || error);
     }
   }
 
