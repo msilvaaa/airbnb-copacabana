@@ -890,9 +890,10 @@ async function authenticateEditor(){
     const session=await neonAuthRequest('get-session',{method:'GET'});
     const user=session?.user||session?.session?.user;
     if(!user) throw new Error('Sessão não criada');
-    cloudUser=user;cloudReady=false;updateLoggedUser();
-    await loadCloudOverrides();
-    DATA=loadMergedData();years=getYears();renderAll();
+    cloudUser=user;
+    // Entrar no editor não pode alterar os números já exibidos na página.
+    // A tela principal permanece exatamente no estado em que foi carregada.
+    updateLoggedUser();
     qs('loginModal').classList.remove('open');
     const now=new Date(),currentYear=now.getFullYear(),currentMonth=now.getMonth(),editorYear=String(currentYear);
     const last=cloudEditorState;
