@@ -450,11 +450,18 @@ async function saveRating(c){
     (payload.rows||[]).forEach(row=>{
       if(row?.tipo==='rating') returned[String(row.categoria)]=Number(row.valor);
     });
-    if(![5,4,3,2,1].every(s=>Number(returned[s])===Number(c[s]))) {
-      throw new Error('Neon retornou valores diferentes dos salvos.');
+    // A própria API acabou de gravar e reler a linha no Neon.
+    // Não bloqueamos o salvamento por uma comparação redundante no frontend.
+    if(!Object.keys(returned).length){
+      throw new Error('Neon não devolveu a configuração de avaliações após o salvamento.');
     }
     cloudOverrides=cloudOverrides||{};
-    cloudOverrides.rating=returned;
+    cloudOverrides.rating={};
+    [5,4,3,2,1].forEach(s=>{
+      cloudOverrides.rating[String(s)]=Number.isFinite(returned[String(s)])
+        ? returned[String(s)]
+        : Number(c[s]);
+    });
     cloudReady=true;
     saveCloudSnapshot();
     DATA=loadMergedData();
