@@ -740,6 +740,11 @@ function renderBalance(){const y=qs('yearSelect').value,p=periodBounds(),view=qs
 function renderTable(){tableRows('dataBody');qs('dataNote').textContent='Os valores são recalculados automaticamente a cada lançamento salvo.'}
 function renderAll(){updatePeriodBadges();renderKpis();renderOverview();renderCosts();renderFinance();renderBalance();renderTable()}
 
+function updateLoggedUser(){
+  const el=qs('loggedUserEmail');
+  if(el) el.textContent=cloudUser?.email||'—';
+}
+
 function openEditor(){qs('loginError').textContent='';qs('loginModal').classList.add('open');setTimeout(()=>{const u=qs('loginUser');if(!u.value){try{u.value=localStorage.getItem('dashboard_login_username')||''}catch(e){}}u.focus()},50)}
 async function resetNeonPassword(){
   const u=qs('loginUser').value.trim();
