@@ -540,9 +540,9 @@ function renderRating(){
   const fiveNeeded=reviewsNeededForTarget(c,5);
   const fiveStars='<span class="rating-goal-stars">★★★★★</span>';
   if(nextEl){
-    nextEl.innerHTML=nextTarget>=5
-      ? (fiveNeeded===0?'Nota 5,00 alcançada.':'Faltam '+fiveNeeded+' avaliações '+fiveStars+' para alcançar 5,00.')
-      : 'Faltam '+nextNeeded+' avaliações '+fiveStars+' para alcançar '+formatRating(nextTarget)+'.';
+    nextEl.textContent=nextTarget>=5
+      ? (fiveNeeded===0?'Nota 5,00 alcançada.':'Faltam '+fiveNeeded+' avaliações 5 estrelas para alcançar 5,00.')
+      : 'Faltam '+nextNeeded+' avaliações 5 estrelas para alcançar '+formatRating(nextTarget)+'.';
   }
   if(fiveEl){
     fiveEl.innerHTML=fiveNeeded===0
