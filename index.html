@@ -286,10 +286,9 @@ let cloudUser=null;
 async function getAuthAccessToken(){
   try{
     const auth=await getNeonAuthClient();
-    const result=await auth.token?.();
-    return result?.data?.token || result?.token || null;
+    return await auth.getJWTToken?.() || null;
   }catch(e){
-    console.error('Neon Auth token error:',e);
+    console.error('Neon Auth JWT error:',e);
     return null;
   }
 }
