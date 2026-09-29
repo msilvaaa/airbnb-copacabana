@@ -427,7 +427,19 @@ function calculateRating(c){const n=c[5]+c[4]+c[3]+c[2]+c[1];return n?((5*c[5]+4
 function formatRating(v){return v==null?'—':v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function renderRating(){const v=calculateRating(getRatingCounts());const el=document.querySelector('.rating');if(el)el.textContent='★ '+formatRating(v);}
 function updateRatingPreview(){const c={};[5,4,3,2,1].forEach(s=>c[s]=Math.max(0,Math.floor(Number(qs('rating'+s).value)||0)));const n=c[5]+c[4]+c[3]+c[2]+c[1],v=calculateRating(c);qs('ratingResult').textContent='Nota calculada: '+(v==null?'—':formatRating(v))+' · '+n+' avaliações';}
-async function saveRating(c){if(cloudReady&&cloudUser){try{for(const s of [5,4,3,2,1])await apiRequest('DELETE',{ano:2021,mes:0,tipo:'rating',categoria:String(s)});for(const s of [5,4,3,2,1])await apiRequest('POST',{ano:2021,mes:0,valor:Number(c[s]),tipo:'rating',categoria:String(s)});await loadCloudOverrides();return true;}catch(e){console.error(e);return false;}}const o=loadOverrides();o.rating={};[5,4,3,2,1].forEach(s=>o.rating[String(s)]=Number(c[s]));return saveOverrides(o);}
+async function saveRating(c){
+  if(cloudReady&&cloudUser){
+    try{
+      const payload=await apiRequest('POST',{ratingCounts:{5:Number(c[5]),4:Number(c[4]),3:Number(c[3]),2:Number(c[2]),1:Number(c[1])}});
+      if(!payload?.ok) throw new Error('Neon não confirmou o salvamento da nota.');
+      await loadCloudOverrides();
+      const saved=getRatingCounts();
+      if(![5,4,3,2,1].every(s=>Number(saved[s])===Number(c[s]))) throw new Error('Neon retornou valores diferentes dos salvos.');
+      return true;
+    }catch(e){console.error('Rating save error:',e);return false;}
+  }
+  const o=loadOverrides();o.rating={};[5,4,3,2,1].forEach(s=>o.rating[String(s)]=Number(c[s]));return saveOverrides(o);
+}
 async function clearRating(){if(cloudReady&&cloudUser){try{for(const s of [5,4,3,2,1])await apiRequest('DELETE',{ano:2021,mes:0,tipo:'rating',categoria:String(s)});await loadCloudOverrides();return true;}catch(e){console.error(e);return false;}}const o=loadOverrides();delete o.rating;saveOverrides(o);return true;}
 function getYears(){return yearsFrom(DATA)}
 async function setOverride(type,y,m,v){if(cloudReady&&cloudUser){try{await writeCloudRow(cloudUser,Number(y),Number(m),type,'',Number(v));await loadCloudOverrides();DATA=loadMergedData();years=getYears();return true}catch(e){console.error(e);return false}}const o=loadOverrides();o[type]=o[type]||{};o[type][String(y)]=o[type][String(y)]||{};o[type][String(y)][String(m)]=v;const ok=saveOverrides(o);DATA=loadMergedData();years=getYears();return ok}
