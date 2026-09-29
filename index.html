@@ -545,15 +545,19 @@ function renderRating(){
   const fiveStars='<span class="rating-goal-stars">★★★★★</span>';
   if(nextEl){
     nextEl.textContent=nextTarget>=5
-      ? (fiveNeeded===0?'Nota 5,00 alcançada.':'Faltam '+fiveNeeded+' avaliações 5 estrelas para alcançar 5,00.')
+      ? (fiveNeeded===0?'Nota 5,00 alcançada.':(fiveNeeded===1
+        ? 'Falta 1 avaliação de 5 estrelas, para alcançar 5,00'
+        : 'Faltam '+fiveNeeded+' avaliações de 5 estrelas, para alcançar 5,00'))
       : (nextNeeded===1
-        ? 'Falta 1 avaliação, 5 estrelas para alcançar '+formatRating(nextTarget)
-        : 'Faltam '+nextNeeded+' avaliações, 5 estrelas para alcançar '+formatRating(nextTarget));
+        ? 'Falta 1 avaliação de 5 estrelas, para alcançar '+formatRating(nextTarget)
+        : 'Faltam '+nextNeeded+' avaliações de 5 estrelas, para alcançar '+formatRating(nextTarget));
   }
   if(fiveEl){
     fiveEl.innerHTML=fiveNeeded===0
       ? 'Nota 5,00 alcançada.'
-      : 'Faltam '+fiveNeeded+' avaliações, 5 estrelas para alcançar a nota 5,00 '+fiveStars;
+      : (fiveNeeded===1
+        ? 'Falta 1 avaliação de 5 estrelas, para alcançar a nota 5,00 '+fiveStars
+        : 'Faltam '+fiveNeeded+' avaliações de 5 estrelas, para alcançar a nota 5,00 '+fiveStars);
   }
 }
 function updateRatingPreview(){const c={};[5,4,3,2,1].forEach(s=>c[s]=Math.max(0,Math.floor(Number(qs('rating'+s).value)||0)));const n=c[5]+c[4]+c[3]+c[2]+c[1],v=calculateRating(c);qs('ratingResult').textContent='Nota calculada: '+(v==null?'—':formatRating(v))+' · '+n+' avaliações';}
