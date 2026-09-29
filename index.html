@@ -305,7 +305,12 @@ async function getAuthAccessToken(){
   }
 }
 async function apiRequest(method,body){
-  const options={method,credentials:'include',headers:{'Content-Type':'application/json'}};
+  const headers={'Content-Type':'application/json'};
+  try{
+    const token=await getAuthAccessToken();
+    if(token) headers.Authorization='Bearer '+token;
+  }catch(e){console.error('Neon Auth token error:',e)}
+  const options={method,credentials:'include',headers};
   if(body!==undefined) options.body=JSON.stringify(body);
   const response=await fetch('/api/airbnb-dashboard',options);
   const payload=await response.json().catch(()=>({}));
