@@ -259,50 +259,26 @@ async function getNeonAuthClient(){
   return neonAuthClient;
 }
 async function neonAuthRequest(path,options={}){
-  const auth=await getNeonAuthClient();
-  let body={};
-  if(options.body){
-    try{body=typeof options.body==="string"?JSON.parse(options.body):options.body;}catch(e){body={};}
+  const opts={credentials:'include',...options,headers:{...(options.headers||{})}};
+  if(opts.body && !opts.headers['Content-Type']) opts.headers['Content-Type']='application/json';
+  const response=await fetch(NEON_AUTH_BASE+'/'+path.replace(/^\//,''),opts);
+  const payload=await response.json().catch(()=>({}));
+  if(!response.ok){
+    const detail=payload?.message||payload?.error?.message||payload?.error||('HTTP '+response.status);
+    const error=new Error(String(detail));
+    error.status=response.status;
+    throw error;
   }
-  if(path==="sign-in/email"){
-    const result=await auth.signIn.email(body);
-    if(result?.error) throw Object.assign(new Error(result.error.message||"Authentication failed"),{status:result.error.status||400});
-    return result?.data||result;
-  }
-  if(path==="get-session"){
-    const result=await auth.getSession();
-    if(result?.error) throw Object.assign(new Error(result.error.message||"Session error"),{status:result.error.status||400});
-    return result?.data||result;
-  }
-  if(path==="sign-out"){
-    const result=await auth.signOut();
-    if(result?.error) throw Object.assign(new Error(result.error.message||"Sign out failed"),{status:result.error.status||400});
-    return result?.data||result;
-  }
-  if(path==="request-password-reset"){
-    const result=await auth.requestPasswordReset(body);
-    if(result?.error) throw Object.assign(new Error(result.error.message||"Password reset failed"),{status:result.error.status||400});
-    return result?.data||result;
-  }
-  if(path==="reset-password"){
-    const result=await auth.resetPassword(body);
-    if(result?.error) throw Object.assign(new Error(result.error.message||"Password reset failed"),{status:result.error.status||400});
-    return result?.data||result;
-  }
-  throw new Error("Auth method not configured: "+path);
+  return payload;
 }
 let cloudOverrides={};
 let cloudReady=false;
 let cloudUser=null;
 
 async function getAuthAccessToken(){
-  try{
-    const auth=await getNeonAuthClient();
-    return await auth.getJWTToken?.() || null;
-  }catch(e){
-    console.error("Neon Auth JWT error:",e);
-    return null;
-  }
+  // A autenticação do editor é feita pelo cookie de sessão no mesmo domínio
+  // através do proxy /api/auth. Não envia JWT diretamente para a API.
+  return null;
 }
 async function apiRequest(method,body,publicRead=false){
   const headers={'Content-Type':'application/json'};
