@@ -288,6 +288,7 @@ async function neonAuthRequest(path,options={}){
 let cloudOverrides={};
 let cloudReady=false;
 let cloudUser=null;
+let cloudEditorState=null;
 
 async function getAuthAccessToken(){
   try{
@@ -321,6 +322,7 @@ async function loadCloudOverrides(allowPublic=false){
   try{
     const payload=await apiRequest('GET',undefined,allowPublic && !cloudUser);
     const data=payload.rows||[];
+    if(payload.editorState && typeof payload.editorState==='object') cloudEditorState=payload.editorState;
     const o={};
     data.forEach(row=>{
       const y=String(row.ano),m=String(row.mes),t=row.tipo;
@@ -452,6 +454,12 @@ function calculateRating(c){const n=c[5]+c[4]+c[3]+c[2]+c[1];return n?((5*c[5]+4
 function formatRating(v){return v==null?'—':v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function renderRating(){const v=calculateRating(getRatingCounts());const el=document.querySelector('.rating');if(el)el.textContent='★ '+formatRating(v);}
 function updateRatingPreview(){const c={};[5,4,3,2,1].forEach(s=>c[s]=Math.max(0,Math.floor(Number(qs('rating'+s).value)||0)));const n=c[5]+c[4]+c[3]+c[2]+c[1],v=calculateRating(c);qs('ratingResult').textContent='Nota calculada: '+(v==null?'—':formatRating(v))+' · '+n+' avaliações';}
+async function saveEditorState(state){
+  const payload=await apiRequest('POST',{editorState:state});
+  if(payload?.error) throw new Error(payload.error);
+  cloudEditorState=state;
+  saveCloudSnapshot();
+}
 async function saveRating(c){
   // Renova a sessão antes da gravação para evitar salvar apenas localmente
   // quando o navegador ainda mostra o usuário conectado, mas a sessão/API
@@ -481,6 +489,10 @@ async function saveRating(c){
     });
     cloudReady=true;
     saveCloudSnapshot();
+    await saveEditorState({
+      type:'rating',
+      rating:{5:Number(c[5]),4:Number(c[4]),3:Number(c[3]),2:Number(c[2]),1:Number(c[1])}
+    });
     DATA=loadMergedData();
     years=getYears();
     return true;
@@ -867,8 +879,22 @@ async function authenticateEditor(){
     DATA=loadMergedData();years=getYears();renderAll();
     qs('loginModal').classList.remove('open');
     const now=new Date(),currentYear=now.getFullYear(),currentMonth=now.getMonth(),editorYear=String(currentYear);
-    qs('editYear').value=(years.includes(editorYear)?editorYear:(qs('yearSelect').value==='all'?'2027':qs('yearSelect').value));
-    qs('editMonth').value=String(currentMonth);qs('editType').value='revenue';updateEditorMode();qs('editModal').classList.add('open');
+    const last=cloudEditorState;
+    if(last && typeof last==='object'){
+      qs('editYear').value=last.year!=null?String(last.year):(years.includes(editorYear)?editorYear:(qs('yearSelect').value==='all'?'2027':qs('yearSelect').value));
+      qs('editMonth').value=last.month!=null?String(last.month):String(currentMonth);
+      qs('editType').value=last.type||'revenue';
+      updateEditorMode().then(()=>{
+        if(last.category!=null && qs('editCategory')) qs('editCategory').value=String(last.category);
+        if(last.type==='fixedCategory') syncEditValue();
+      }).catch(e=>console.error('Editor restore error:',e));
+    }else{
+      qs('editYear').value=(years.includes(editorYear)?editorYear:(qs('yearSelect').value==='all'?'2027':qs('yearSelect').value));
+      qs('editMonth').value=String(currentMonth);
+      qs('editType').value='revenue';
+      updateEditorMode();
+    }
+    qs('editModal').classList.add('open');
   }catch(e){
     const detail=e?.message?String(e.message):'Falha ao autenticar';
     qs('loginError').textContent=e?.status?('Falha no Neon Auth ('+e.status+'): '+detail):detail;
@@ -898,14 +924,20 @@ async function clearCategoryOverride(y,m,name){
   const o=loadOverrides();aliases.forEach(n=>{if(o.fixedCategory?.[yr]?.[n]){delete o.fixedCategory[yr][n][String(m)];if(!Object.keys(o.fixedCategory[yr][n]).length)delete o.fixedCategory[yr][n];}});if(o.fixedCategory?.[yr]&&!Object.keys(o.fixedCategory[yr]).length)delete o.fixedCategory[yr];if(o.fixedCategory&&!Object.keys(o.fixedCategory).length)delete o.fixedCategory;saveOverrides(o);DATA=loadMergedData();years=getYears();return true;
 }
 function refreshCategorySelector(){const sel=qs('editCategory');if(!sel)return;const current=sel.value;sel.innerHTML=ensureCategoryNames().map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');if(ensureCategoryNames().includes(current))sel.value=current;}
-async function updateEditorMode(){const t=qs('editType').value,isCat=t==='fixedCategory',isFixed=t==='fixed',isRating=t==='rating';qs('editYearField').classList.toggle('hidden',isRating);qs('editMonthField').classList.toggle('hidden',isRating);qs('editAddValueField').classList.toggle('hidden',isRating);qs('editValueField').classList.toggle('hidden',isRating);qs('ratingField').classList.toggle('hidden',!isRating);qs('editAddValueField').classList.toggle('add-value-under-revenue',['revenue','maintenance','cleaning','financing'].includes(t));qs('editAddValueField').closest('.form-grid').classList.toggle('add-value-below',['revenue','maintenance','cleaning','financing'].includes(t));qs('categoryField').classList.toggle('hidden',!isCat);qs('editFixedTotalField').classList.toggle('hidden',!isFixed);refreshCategorySelector();if(isRating){qs('saveState').textContent='Lendo a nota atual do Neon...';try{if(cloudUser) await loadCloudOverrides(false);}catch(e){console.error('Rating editor refresh error:',e)}const c=getRatingCounts();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=c[s]);updateRatingPreview();qs('saveState').textContent='Edite a quantidade de avaliações por estrela.';}else{syncEditValue();syncFixedTotalPreview();}}
+async function updateEditorMode(){const t=qs('editType').value,isCat=t==='fixedCategory',isFixed=t==='fixed',isRating=t==='rating';qs('editYearField').classList.toggle('hidden',isRating);qs('editMonthField').classList.toggle('hidden',isRating);qs('editAddValueField').classList.toggle('hidden',isRating);qs('editValueField').classList.toggle('hidden',isRating);qs('ratingField').classList.toggle('hidden',!isRating);qs('editAddValueField').classList.toggle('add-value-under-revenue',['revenue','maintenance','cleaning','financing'].includes(t));qs('editAddValueField').closest('.form-grid').classList.toggle('add-value-below',['revenue','maintenance','cleaning','financing'].includes(t));qs('categoryField').classList.toggle('hidden',!isCat);qs('editFixedTotalField').classList.toggle('hidden',!isFixed);refreshCategorySelector();if(isRating){const c=(cloudEditorState?.type==='rating'&&cloudEditorState?.rating)?cloudEditorState.rating:getRatingCounts();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=Number(c[s]||0));updateRatingPreview();qs('saveState').textContent='Edite a quantidade de avaliações por estrela.';}else{syncEditValue();syncFixedTotalPreview();}}
 function syncFixedTotalPreview(){const y=Number(qs('editYear').value),m=Number(qs('editMonth').value);const names=['IPTU','Apartamento','Condomínio','Internet','Light','Naturgy'];let total=0,has=false;names.forEach(name=>{const v=categoryValue(y,m,name);if(v!=null&&Number.isFinite(Number(v))){total+=Number(v);has=true}});const cleaning=DATA.cleaning?.[String(y)]?.[m];if(cleaning!=null&&Number.isFinite(Number(cleaning))){total+=Number(cleaning);has=true}qs('editFixedTotalPreview').value=has?fmt(total):'R$ 0,00';}
 function syncEditValue(){const y=String(qs('editYear').value||''),m=Number(qs('editMonth').value),t=qs('editType').value,o=loadOverrides();
   if(t==='fixedCategory'){refreshCategorySelector();const name=qs('editCategory').value,saved=o.fixedCategory?.[y]?.[name]?.[String(m)],current=categoryValue(y,m,name);qs('editValue').value=saved??(current??'');qs('saveState').textContent=saved!=null?'Existe um lançamento manual salvo para esta categoria.':'Valor original / vazio.';return}
   const saved=o[t]?.[y]?.[String(m)],current=DATA[t]?.[y]?.[m];qs('editValue').value=saved??(current??'');qs('saveState').textContent=saved!=null?'Existe um lançamento manual salvo.':'Valor original / vazio.'
 }
 qs('confirmAddValueBtn').addEventListener('click',()=>{const add=Number(qs('editAddValue').value||0),base=Number(qs('editValue').value||0);if(!Number.isFinite(add)||add<0){qs('saveState').textContent='Informe um valor válido para somar.';return}qs('editValue').value=(base+add).toFixed(2);qs('editAddValue').value='';qs('saveState').textContent='Valor somado. Confira o novo total e clique em Salvar.'});
-qs('saveEditBtn').addEventListener('click',async()=>{const t=qs('editType').value;if(t==='rating'){const c={};for(const s of [5,4,3,2,1]){const v=Number(qs('rating'+s).value);if(!Number.isInteger(v)||v<0){qs('saveState').textContent='Informe quantidades inteiras e não negativas.';return}c[s]=v;}if(c[5]+c[4]+c[3]+c[2]+c[1]===0){qs('saveState').textContent='Informe pelo menos uma avaliação.';return}qs('saveState').textContent='Salvando no Neon...';try{await saveRating(c);renderRating();qs('saveState').textContent='Nota salva no Neon — disponível em todos os dispositivos.';}catch(e){console.error('Rating editor save error:',e);qs('saveState').textContent='Erro ao salvar no Neon: '+(e?.message||'falha desconhecida');}return;}const y=Number(qs('editYear').value),m=Number(qs('editMonth').value),baseValue=Number(qs('editValue').value),addValue=Number(qs('editAddValue').value||0),v=baseValue+addValue;if(!y||y<2021||m<0||m>11||!Number.isFinite(v)||v<0){qs('saveState').textContent='Preencha ano, mês e um valor válido.';return}qs('saveState').textContent='Salvando no Neon...';let ok;if(t==='fixedCategory'){const name=qs('editCategory').value;if(!name){qs('saveState').textContent='Selecione uma categoria.';return}ok=await saveCategoryOverride(y,m,name,v)}else ok=await setOverride(t,y,m,v);setSelects();qs('yearSelect').value=String(y);qs('monthStartSelect').value=String(m);renderAll();qs('saveState').textContent=ok?'Salvo no Neon — disponível em todos os dispositivos.':'Não foi possível salvar no Neon.';qs('editAddValue').value='';})
+qs('saveEditBtn').addEventListener('click',async()=>{const t=qs('editType').value;if(t==='rating'){const c={};for(const s of [5,4,3,2,1]){const v=Number(qs('rating'+s).value);if(!Number.isInteger(v)||v<0){qs('saveState').textContent='Informe quantidades inteiras e não negativas.';return}c[s]=v;}if(c[5]+c[4]+c[3]+c[2]+c[1]===0){qs('saveState').textContent='Informe pelo menos uma avaliação.';return}qs('saveState').textContent='Salvando no Neon...';try{await saveRating(c);renderRating();qs('saveState').textContent='Nota salva no Neon — disponível em todos os dispositivos.';}catch(e){console.error('Rating editor save error:',e);qs('saveState').textContent='Erro ao salvar no Neon: '+(e?.message||'falha desconhecida');}return;}const y=Number(qs('editYear').value),m=Number(qs('editMonth').value),baseValue=Number(qs('editValue').value),addValue=Number(qs('editAddValue').value||0),v=baseValue+addValue;if(!y||y<2021||m<0||m>11||!Number.isFinite(v)||v<0){qs('saveState').textContent='Preencha ano, mês e um valor válido.';return}qs('saveState').textContent='Salvando no Neon...';let ok;if(t==='fixedCategory'){const name=qs('editCategory').value;if(!name){qs('saveState').textContent='Selecione uma categoria.';return}ok=await saveCategoryOverride(y,m,name,v)}else ok=await setOverride(t,y,m,v);setSelects();qs('yearSelect').value=String(y);qs('monthStartSelect').value=String(m);renderAll();
+if(ok){
+  try{
+    await saveEditorState({type:t,year:y,month:m,category:t==='fixedCategory'?(qs('editCategory').value||''):null});
+  }catch(e){console.error('Editor state save error:',e);}
+}
+qs('saveState').textContent=ok?'Salvo no Neon — disponível em todos os dispositivos.':'Não foi possível salvar no Neon.';qs('editAddValue').value='';})
 qs('clearEditBtn').addEventListener('click',async()=>{const t=qs('editType').value;if(t==='rating'){qs('saveState').textContent='Removendo a nota salva...';const ok=await clearRating();renderRating();updateEditorMode();qs('saveState').textContent=ok?'Nota removida. Voltou aos valores padrão.':'Não foi possível remover a nota.';return;}const y=Number(qs('editYear').value),m=Number(qs('editMonth').value);qs('saveState').textContent='Removendo do Neon...';let ok;if(t==='fixedCategory')ok=await clearCategoryOverride(y,m,qs('editCategory').value);else ok=await clearOverride(t,y,m);syncEditValue();setSelects();qs('yearSelect').value=String(y);qs('monthStartSelect').value=String(m);renderAll();qs('saveState').textContent=ok?'Lançamento removido do Neon.':'Não foi possível remover o lançamento.'})
 qs('resetSavedBtn').addEventListener('click',async()=>{
   if(!confirm('Tem certeza que deseja apagar TODAS as alterações salvas?\n\nEsta ação removerá todos os lançamentos manuais salvos de todos os meses e tipos de dados. Os valores originais do dashboard não serão apagados.\n\nDeseja realmente continuar?'))return;
