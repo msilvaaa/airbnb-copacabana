@@ -13,18 +13,27 @@ async function getJwks() {
 }
 
 
+function decodeCookieBundle(value) {
+  try {
+    const json = Buffer.from(String(value), 'base64url').toString('utf8');
+    const cookies = JSON.parse(json);
+    return Array.isArray(cookies) ? cookies.join('; ') : '';
+  } catch { return ''; }
+}
+
 async function authenticateRequest(req) {
-  // Prioriza a sessão via cookie do Neon Auth. O JWT enviado pelo navegador
-  // pode ter um subject com formato diferente do ID UUID usado na tabela.
-  const cookie = req.headers.cookie;
+  let cookie = req.headers.cookie || '';
+  const bundleMatch = cookie.match(/(?:^|;\s*)airbnb_neon_auth_bundle=([^;]+)/);
+  if (bundleMatch) {
+    const bundled = decodeCookieBundle(bundleMatch[1]);
+    if (bundled) cookie = bundled;
+  }
+
   if (cookie) {
     try {
-      const sessionHeaders = { cookie, accept: "application/json" };
-      if (req.headers.origin) sessionHeaders.origin = req.headers.origin;
-      if (req.headers.referer) sessionHeaders.referer = req.headers.referer;
-      const response = await fetch(NEON_AUTH_URL.replace(/\/$/, "") + "/get-session", {
-        method: "GET",
-        headers: sessionHeaders
+      const response = await fetch(NEON_AUTH_URL.replace(/\/$/, '') + '/get-session', {
+        method: 'GET',
+        headers: { cookie, accept: 'application/json' }
       });
       if (response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -32,19 +41,19 @@ async function authenticateRequest(req) {
         if (user?.id) return { id: String(user.id), email: user.email || null };
       }
     } catch (error) {
-      console.error("Neon Auth session verification error:", error?.message || error);
+      console.error('Neon Auth session verification error:', error?.message || error);
     }
   }
 
-  const bearer = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i);
+  const bearer = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i);
   if (bearer) {
     try {
-      const { jwtVerify } = await import("jose");
+      const { jwtVerify } = await import('jose');
       const jwks = await getJwks();
       const { payload } = await jwtVerify(bearer[1], jwks);
       if (payload?.sub) return { id: String(payload.sub), email: payload.email || null };
     } catch (error) {
-      console.error("Neon Auth JWT verification error:", error?.message || error);
+      console.error('Neon Auth JWT verification error:', error?.message || error);
     }
   }
 

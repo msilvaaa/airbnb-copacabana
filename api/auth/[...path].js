@@ -12,9 +12,15 @@ function getSetCookies(headers) {
 }
 
 function rewriteSetCookie(value) {
-  return value
-    .replace(/;\s*Domain=[^;]+/ig, "")
-    .replace(/;\s*SameSite=None/ig, "; SameSite=Lax");
+  return value.replace(/;\s*Domain=[^;]+/ig, "");
+}
+
+function cookiePairs(setCookies) {
+  return setCookies.map(v => String(v).split(';')[0]).filter(Boolean);
+}
+
+function encodeCookieBundle(pairs) {
+  return Buffer.from(JSON.stringify(pairs), 'utf8').toString('base64url');
 }
 
 module.exports = async function handler(req, res) {
@@ -40,8 +46,27 @@ module.exports = async function handler(req, res) {
       body
     });
 
-    const setCookies = getSetCookies(upstream.headers).map(rewriteSetCookie);
+    const rawSetCookies = getSetCookies(upstream.headers);
+    const setCookies = rawSetCookies.map(rewriteSetCookie);
     if (setCookies.length) res.setHeader("Set-Cookie", setCookies);
+
+    const pathName = String(path || "");
+    if (setCookies.length && pathName !== "sign-out") {
+      const bundle = encodeCookieBundle(cookiePairs(setCookies));
+      res.appendHeader
+        ? res.appendHeader("Set-Cookie", "airbnb_neon_auth_bundle="+bundle+"; Path=/; HttpOnly; Secure; SameSite=Lax")
+        : res.setHeader("Set-Cookie", [...setCookies, "airbnb_neon_auth_bundle="+bundle+"; Path=/; HttpOnly; Secure; SameSite=Lax"]);
+    }
+    if (pathName === "sign-out") {
+      const clearBundle = "airbnb_neon_auth_bundle=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0";
+      if (setCookies.length) {
+        res.appendHeader
+          ? res.appendHeader("Set-Cookie", clearBundle)
+          : res.setHeader("Set-Cookie", [...setCookies, clearBundle]);
+      } else {
+        res.setHeader("Set-Cookie", clearBundle);
+      }
+    }
 
     const contentType = upstream.headers.get("content-type");
     if (contentType) res.setHeader("Content-Type", contentType);
