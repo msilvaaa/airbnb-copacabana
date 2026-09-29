@@ -83,7 +83,7 @@ module.exports = async function handler(req, res) {
       return setJson(res, 500, { error: error?.message || "Internal server error" });
     }
   }
-  const user = await authenticate(req);
+  const user = await authenticateRequest(req);
   if (!user?.id) return setJson(res, 401, { error: "Unauthorized" });
 
   try {
