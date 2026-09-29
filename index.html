@@ -446,9 +446,17 @@ async function saveRating(c){
   try{
     const payload=await apiRequest('POST',{ratingCounts:{5:Number(c[5]),4:Number(c[4]),3:Number(c[3]),2:Number(c[2]),1:Number(c[1])}});
     if(!payload?.ok) throw new Error(payload?.error||'Neon não confirmou o salvamento da nota.');
-    await loadCloudOverrides(false);
-    const saved=getRatingCounts();
-    if(![5,4,3,2,1].every(s=>Number(saved[s])===Number(c[s]))) throw new Error('Neon retornou valores diferentes dos salvos.');
+    const returned={};
+    (payload.rows||[]).forEach(row=>{
+      if(row?.tipo==='rating') returned[String(row.categoria)]=Number(row.valor);
+    });
+    if(![5,4,3,2,1].every(s=>Number(returned[s])===Number(c[s]))) {
+      throw new Error('Neon retornou valores diferentes dos salvos.');
+    }
+    cloudOverrides=cloudOverrides||{};
+    cloudOverrides.rating=returned;
+    cloudReady=true;
+    saveCloudSnapshot();
     DATA=loadMergedData();
     years=getYears();
     return true;
