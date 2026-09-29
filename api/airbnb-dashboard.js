@@ -52,6 +52,26 @@ function setJson(res, status, payload) {
   return res.status(status).json(payload);
 }
 
+async function ensureRatingTable() {
+  await sql`CREATE TABLE IF NOT EXISTS public.airbnb_rating_config (
+    id smallint PRIMARY KEY,
+    nota_5 integer NOT NULL DEFAULT 0,
+    nota_4 integer NOT NULL DEFAULT 0,
+    nota_3 integer NOT NULL DEFAULT 0,
+    nota_2 integer NOT NULL DEFAULT 0,
+    nota_1 integer NOT NULL DEFAULT 0,
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )`;
+}
+function ratingRows(r) {
+  if (!r) return [];
+  return [5,4,3,2,1].map(s => ({ id: 0, ano: 2021, mes: 0, valor: Number(r['nota_'+s] || 0), tipo: 'rating', categoria: String(s) }));
+}
+async function readRatingRows() {
+  await ensureRatingTable();
+  const rows = await sql`SELECT nota_5, nota_4, nota_3, nota_2, nota_1 FROM public.airbnb_rating_config WHERE id = 1`;
+  return ratingRows(rows[0]);
+}
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
@@ -61,24 +81,14 @@ module.exports = async function handler(req, res) {
 
   if (isPublicRead) {
     try {
-      const rows = await sql`
-        SELECT id, ano, mes, valor, tipo, categoria
-        FROM public.airbnb_dashboard
-        WHERE user_id = (
-          SELECT user_id
-          FROM public.airbnb_dashboard
-          ORDER BY id DESC
-          LIMIT 1
-        )
-        ORDER BY id ASC
-      `;
-      return setJson(res, 200, { rows, public: true });
+      const rows = await sql`SELECT id, ano, mes, valor, tipo, categoria FROM public.airbnb_dashboard ORDER BY id ASC`;
+      const ratings = await readRatingRows();
+      return setJson(res, 200, { rows: rows.concat(ratings), public: true });
     } catch (error) {
       console.error("Neon public read error:", error);
       return setJson(res, 500, { error: error?.message || "Internal server error" });
     }
   }
-
   const user = await authenticate(req);
   if (!user?.id) return setJson(res, 401, { error: "Unauthorized" });
 
@@ -90,9 +100,9 @@ module.exports = async function handler(req, res) {
         WHERE user_id = ${user.id}::uuid
         ORDER BY id ASC
       `;
-      return setJson(res, 200, { rows });
+      const ratings = await readRatingRows();
+      return setJson(res, 200, { rows: rows.concat(ratings) });
     }
-
     let body = req.body;
     if (typeof body === "string") {
       try { body = JSON.parse(body); } catch { body = null; }
@@ -101,30 +111,25 @@ module.exports = async function handler(req, res) {
 
     if (req.method === "POST") {
       if (body.ratingCounts && typeof body.ratingCounts === "object") {
-        const counts = [5, 4, 3, 2, 1].map(s => ({ star: String(s), value: Number(body.ratingCounts[s]) }));
-        if (counts.some(r => !Number.isInteger(r.value) || r.value < 0) || counts.reduce((n, r) => n + r.value, 0) <= 0) {
+        const counts = {};
+        [5,4,3,2,1].forEach(s => { counts[s] = Number(body.ratingCounts[s]); });
+        const values = [5,4,3,2,1].map(s => counts[s]);
+        if (values.some(v => !Number.isInteger(v) || v < 0) || values.reduce((a,b)=>a+b,0) <= 0) {
           return setJson(res, 400, { error: "Invalid rating counts" });
         }
-        // Substitui a distribuição inteira com INSERTs simples e explícitos.
-        // Evita depender de jsonb_to_recordset, que pode gerar 500 em algumas
-        // configurações do Postgres/Neon.
-        // Não usa um novo valor para a coluna "tipo" que possa estar sujeito
-        // a CHECK/ENUM legado. Reaproveita "fixedCategory", já existente no
-        // schema, usando uma categoria interna exclusiva para as avaliações.
-        await sql`DELETE FROM public.airbnb_dashboard
-          WHERE user_id = ${user.id}::uuid
-            AND (tipo = 'rating' OR (tipo = 'fixedCategory' AND categoria LIKE '__airbnb_rating_%'))`;
-        const rows = [];
-        for (const r of counts) {
-          const inserted = await sql`INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
-            VALUES (${user.id}::uuid, 2021, 0, ${r.value}, 'fixedCategory', ${'__airbnb_rating_'+r.star})
-            RETURNING id, ano, mes, valor, tipo, categoria`;
-          if (inserted[0]) rows.push(inserted[0]);
-        }
-        if (rows.length !== 5) {
-          throw new Error('Neon inseriu apenas '+rows.length+' de 5 notas.');
-        }
-        return setJson(res, 200, { ok: true, rows });
+        await ensureRatingTable();
+        await sql`
+          INSERT INTO public.airbnb_rating_config (id, nota_5, nota_4, nota_3, nota_2, nota_1, updated_at)
+          VALUES (1, ${values[0]}, ${values[1]}, ${values[2]}, ${values[3]}, ${values[4]}, now())
+          ON CONFLICT (id) DO UPDATE SET
+            nota_5 = EXCLUDED.nota_5,
+            nota_4 = EXCLUDED.nota_4,
+            nota_3 = EXCLUDED.nota_3,
+            nota_2 = EXCLUDED.nota_2,
+            nota_1 = EXCLUDED.nota_1,
+            updated_at = now()`;
+        const current = await sql`SELECT nota_5, nota_4, nota_3, nota_2, nota_1 FROM public.airbnb_rating_config WHERE id = 1`;
+        return setJson(res, 200, { ok: true, rows: ratingRows(current[0]) });
       }
       const ano = Number(body.ano);
       const mes = Number(body.mes);
