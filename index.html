@@ -538,15 +538,16 @@ function renderRating(){
   const nextTarget=Math.min(5,Math.round((currentDisplay+0.01+Number.EPSILON)*100)/100);
   const nextNeeded=reviewsNeededForTarget(c,nextTarget);
   const fiveNeeded=reviewsNeededForTarget(c,5);
+  const fiveStars='★★★★★';
   if(nextEl){
     nextEl.textContent=nextTarget>=5
-      ? (fiveNeeded===0?'Nota 5,00 alcançada.':'Faltam '+fiveNeeded+' avaliações 5 estrelas para alcançar 5,00.')
-      : 'Faltam '+nextNeeded+' avaliações 5 estrelas para alcançar '+formatRating(nextTarget)+'.';
+      ? (fiveNeeded===0?'Nota 5,00 alcançada.':'Faltam '+fiveNeeded+' avaliações '+fiveStars+' para alcançar 5,00.')
+      : 'Faltam '+nextNeeded+' avaliações '+fiveStars+' para alcançar '+formatRating(nextTarget)+'.';
   }
   if(fiveEl){
     fiveEl.textContent=fiveNeeded===0
       ? 'Nota 5,00 alcançada.'
-      : 'Faltam '+fiveNeeded+' avaliações 5 estrelas para alcançar a nota 5,00.';
+      : 'Faltam '+fiveNeeded+' avaliações '+fiveStars+' para alcançar a nota 5,00.';
   }
 }
 function updateRatingPreview(){const c={};[5,4,3,2,1].forEach(s=>c[s]=Math.max(0,Math.floor(Number(qs('rating'+s).value)||0)));const n=c[5]+c[4]+c[3]+c[2]+c[1],v=calculateRating(c);qs('ratingResult').textContent='Nota calculada: '+(v==null?'—':formatRating(v))+' · '+n+' avaliações';}
