@@ -14,6 +14,25 @@ async function getJwks() {
 
 
 async function authenticateRequest(req) {
+  // Prioriza a sessão via cookie do Neon Auth. O JWT enviado pelo navegador
+  // pode ter um subject com formato diferente do ID UUID usado na tabela.
+  const cookie = req.headers.cookie;
+  if (cookie) {
+    try {
+      const response = await fetch(NEON_AUTH_URL.replace(/\/$/, "") + "/get-session", {
+        method: "GET",
+        headers: { cookie, accept: "application/json" }
+      });
+      if (response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const user = data?.user || data?.session?.user;
+        if (user?.id) return { id: String(user.id), email: user.email || null };
+      }
+    } catch (error) {
+      console.error("Neon Auth session verification error:", error);
+    }
+  }
+
   const bearer = String(req.headers.authorization || "").match(/^Bearer\s+(.+)$/i);
   if (bearer) {
     try {
@@ -26,21 +45,7 @@ async function authenticateRequest(req) {
     }
   }
 
-  const cookie = req.headers.cookie;
-  if (!cookie) return null;
-  try {
-    const response = await fetch(NEON_AUTH_URL.replace(/\/$/, "") + "/get-session", {
-      method: "GET",
-      headers: { cookie, accept: "application/json" }
-    });
-    if (!response.ok) return null;
-    const data = await response.json().catch(() => ({}));
-    const user = data?.user || data?.session?.user;
-    return user?.id ? { id: String(user.id), email: user.email || null } : null;
-  } catch (error) {
-    console.error("Neon Auth session verification error:", error);
-    return null;
-  }
+  return null;
 }
 
 function setJson(res, status, payload) {
@@ -82,7 +87,7 @@ module.exports = async function handler(req, res) {
       const rows = await sql`
         SELECT id, ano, mes, valor, tipo, categoria
         FROM public.airbnb_dashboard
-        WHERE user_id = ${user.id}
+        WHERE user_id = ${user.id}::uuid
         ORDER BY id ASC
       `;
       return setJson(res, 200, { rows });
@@ -107,12 +112,12 @@ module.exports = async function handler(req, res) {
         // a CHECK/ENUM legado. Reaproveita "fixedCategory", já existente no
         // schema, usando uma categoria interna exclusiva para as avaliações.
         await sql`DELETE FROM public.airbnb_dashboard
-          WHERE user_id = ${user.id}
+          WHERE user_id = ${user.id}::uuid
             AND (tipo = 'rating' OR (tipo = 'fixedCategory' AND categoria LIKE '__airbnb_rating_%'))`;
         const rows = [];
         for (const r of counts) {
           const inserted = await sql`INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
-            VALUES (${user.id}, 2021, 0, ${r.value}, 'fixedCategory', ${'__airbnb_rating_'+r.star})
+            VALUES (${user.id}::uuid, 2021, 0, ${r.value}, 'fixedCategory', ${'__airbnb_rating_'+r.star})
             RETURNING id, ano, mes, valor, tipo, categoria`;
           if (inserted[0]) rows.push(inserted[0]);
         }
@@ -132,14 +137,14 @@ module.exports = async function handler(req, res) {
       const rows = await sql`
         WITH deleted AS (
           DELETE FROM public.airbnb_dashboard
-          WHERE user_id = ${user.id}
+          WHERE user_id = ${user.id}::uuid
             AND ano = ${ano}
             AND mes = ${mes}
             AND tipo = ${tipo}
             AND COALESCE(categoria, '') = ${categoria}
         )
         INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
-        VALUES (${user.id}, ${ano}, ${mes}, ${valor}, ${tipo}, ${categoria})
+        VALUES (${user.id}::uuid, ${ano}, ${mes}, ${valor}, ${tipo}, ${categoria})
         RETURNING id, ano, mes, valor, tipo, categoria
       `;
       return setJson(res, 200, { row: rows[0] || null });
@@ -157,13 +162,13 @@ module.exports = async function handler(req, res) {
         }))
         .filter(r => Number.isInteger(r.ano) && r.ano >= 2021 && Number.isInteger(r.mes) && r.mes >= 0 && r.mes <= 11 && Number.isFinite(r.valor) && r.tipo);
 
-      await sql`DELETE FROM public.airbnb_dashboard WHERE user_id = ${user.id}`;
+      await sql`DELETE FROM public.airbnb_dashboard WHERE user_id = ${user.id}::uuid`;
 
       if (normalized.length) {
         await sql`
           INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
           SELECT
-            ${user.id},
+            ${user.id}::uuid,
             r.ano,
             r.mes,
             r.valor,
@@ -178,7 +183,7 @@ module.exports = async function handler(req, res) {
 
     if (req.method === "DELETE") {
       if (body.all === true) {
-        await sql`DELETE FROM public.airbnb_dashboard WHERE user_id = ${user.id}`;
+        await sql`DELETE FROM public.airbnb_dashboard WHERE user_id = ${user.id}::uuid`;
         return setJson(res, 200, { ok: true });
       }
 
@@ -192,7 +197,7 @@ module.exports = async function handler(req, res) {
 
       await sql`
         DELETE FROM public.airbnb_dashboard
-        WHERE user_id = ${user.id}
+        WHERE user_id = ${user.id}::uuid
           AND ano = ${ano}
           AND mes = ${mes}
           AND tipo = ${tipo}
