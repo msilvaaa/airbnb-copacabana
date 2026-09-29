@@ -938,19 +938,48 @@ function resetFiltersToDefault(){
 // Ao abrir/reabrir o site, aguarda a leitura do Neon antes de desenhar
 // os valores. Assim o usuário não vê um valor provisório que muda sozinho.
 async function startDashboard(){
-  // Usa o último estado confirmado no navegador enquanto a sessão é validada.
-  // A tela não troca de valores durante o recarregamento.
+  // O Neon é a fonte oficial. O snapshot local só é usado como plano B
+  // quando a leitura do Neon estiver temporariamente indisponível.
   const snap=loadCloudSnapshot();
-  if(snap?.overrides){
-    cloudOverrides=snap.overrides;
-    cloudReady=true;
-    DATA=loadMergedData();
-    years=getYears();
-    resetFiltersToDefault();
+  const fallback=()=>{
+    if(snap?.overrides){
+      cloudOverrides=snap.overrides;
+      cloudReady=true;
+      DATA=loadMergedData();
+      years=getYears();
+      resetFiltersToDefault();
+    }
+  };
+  try{
+    await initCloud();
+    if(!cloudUser || !cloudReady) fallback();
+    else{
+      DATA=loadMergedData();
+      years=getYears();
+      resetFiltersToDefault();
+      renderRating();
+      renderAll();
+    }
+  }catch(e){
+    console.error('Dashboard startup sync error',e);
+    fallback();
   }
 }
 [5,4,3,2,1].forEach(s=>qs('rating'+s)?.addEventListener('input',updateRatingPreview));renderRating();initMonthPickers();handlePasswordRecovery();startDashboard();
-window.addEventListener('pageshow',()=>{resetFiltersToDefault()});
+window.addEventListener('pageshow',async()=>{
+  await refreshCloudData();
+  if(!cloudReady) resetFiltersToDefault();
+});
+
+// Mantém todas as máquinas sincronizadas com o Neon enquanto o dashboard
+// estiver aberto. A máquina que editou salva no Neon; as demais recarregam
+// os dados automaticamente, sem depender do localStorage.
+setInterval(async()=>{
+  if(document.visibilityState!=='visible')return;
+  if(qs('editModal')?.classList.contains('open') || qs('loginModal')?.classList.contains('open'))return;
+  if(!cloudUser)return;
+  await refreshCloudData();
+},15000);
 
 /* Limpeza automática de dados TEMPORÁRIOS ao sair/fechar a página.
    Não toca no localStorage: os dados do botão "Editar dados" e o usuário salvo permanecem. */
