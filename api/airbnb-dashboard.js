@@ -82,7 +82,7 @@ module.exports = async function handler(req, res) {
       const rows = await sql`
         SELECT id, ano, mes, valor, tipo, categoria
         FROM public.airbnb_dashboard
-        WHERE user_id = ${user.id}::uuid
+        WHERE user_id = ${user.id}
         ORDER BY id ASC
       `;
       return setJson(res, 200, { rows });
@@ -107,12 +107,12 @@ module.exports = async function handler(req, res) {
         // a CHECK/ENUM legado. Reaproveita "fixedCategory", já existente no
         // schema, usando uma categoria interna exclusiva para as avaliações.
         await sql`DELETE FROM public.airbnb_dashboard
-          WHERE user_id = ${user.id}::uuid
+          WHERE user_id = ${user.id}
             AND (tipo = 'rating' OR (tipo = 'fixedCategory' AND categoria LIKE '__airbnb_rating_%'))`;
         const rows = [];
         for (const r of counts) {
           const inserted = await sql`INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
-            VALUES (${user.id}::uuid, 2021, 0, ${r.value}, 'fixedCategory', ${'__airbnb_rating_'+r.star})
+            VALUES (${user.id}, 2021, 0, ${r.value}, 'fixedCategory', ${'__airbnb_rating_'+r.star})
             RETURNING id, ano, mes, valor, tipo, categoria`;
           if (inserted[0]) rows.push(inserted[0]);
         }
@@ -132,14 +132,14 @@ module.exports = async function handler(req, res) {
       const rows = await sql`
         WITH deleted AS (
           DELETE FROM public.airbnb_dashboard
-          WHERE user_id = ${user.id}::uuid
+          WHERE user_id = ${user.id}
             AND ano = ${ano}
             AND mes = ${mes}
             AND tipo = ${tipo}
             AND COALESCE(categoria, '') = ${categoria}
         )
         INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
-        VALUES (${user.id}::uuid, ${ano}, ${mes}, ${valor}, ${tipo}, ${categoria})
+        VALUES (${user.id}, ${ano}, ${mes}, ${valor}, ${tipo}, ${categoria})
         RETURNING id, ano, mes, valor, tipo, categoria
       `;
       return setJson(res, 200, { row: rows[0] || null });
@@ -157,13 +157,13 @@ module.exports = async function handler(req, res) {
         }))
         .filter(r => Number.isInteger(r.ano) && r.ano >= 2021 && Number.isInteger(r.mes) && r.mes >= 0 && r.mes <= 11 && Number.isFinite(r.valor) && r.tipo);
 
-      await sql`DELETE FROM public.airbnb_dashboard WHERE user_id = ${user.id}::uuid`;
+      await sql`DELETE FROM public.airbnb_dashboard WHERE user_id = ${user.id}`;
 
       if (normalized.length) {
         await sql`
           INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
           SELECT
-            ${user.id}::uuid,
+            ${user.id},
             r.ano,
             r.mes,
             r.valor,
@@ -178,7 +178,7 @@ module.exports = async function handler(req, res) {
 
     if (req.method === "DELETE") {
       if (body.all === true) {
-        await sql`DELETE FROM public.airbnb_dashboard WHERE user_id = ${user.id}::uuid`;
+        await sql`DELETE FROM public.airbnb_dashboard WHERE user_id = ${user.id}`;
         return setJson(res, 200, { ok: true });
       }
 
@@ -192,7 +192,7 @@ module.exports = async function handler(req, res) {
 
       await sql`
         DELETE FROM public.airbnb_dashboard
-        WHERE user_id = ${user.id}::uuid
+        WHERE user_id = ${user.id}
           AND ano = ${ano}
           AND mes = ${mes}
           AND tipo = ${tipo}
