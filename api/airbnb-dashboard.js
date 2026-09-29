@@ -73,6 +73,19 @@ module.exports = async function handler(req, res) {
     body = body || {};
 
     if (req.method === "POST") {
+      if (body.ratingCounts && typeof body.ratingCounts === "object") {
+        const counts = [5, 4, 3, 2, 1].map(s => ({ star: String(s), value: Number(body.ratingCounts[s]) }));
+        if (counts.some(r => !Number.isInteger(r.value) || r.value < 0) || counts.reduce((n, r) => n + r.value, 0) <= 0) {
+          return setJson(res, 400, { error: "Invalid rating counts" });
+        }
+        await sql`DELETE FROM public.airbnb_dashboard WHERE user_id = ${user.id}::uuid AND tipo = 'rating'`;
+        const rows = await sql`INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
+          SELECT ${user.id}::uuid, 2021, 0, r.valor, 'rating', r.categoria
+          FROM jsonb_to_recordset(${JSON.stringify(counts.map(r => ({valor:r.value,categoria:r.star})))}::jsonb)
+          AS r(valor numeric, categoria text)
+          RETURNING id, ano, mes, valor, tipo, categoria`;
+        return setJson(res, 200, { ok: true, rows });
+      }
       const ano = Number(body.ano);
       const mes = Number(body.mes);
       const valor = Number(body.valor);
