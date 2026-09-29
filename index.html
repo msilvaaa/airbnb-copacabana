@@ -260,17 +260,24 @@ async function getNeonAuthClient(){
   return neonAuthClient;
 }
 async function neonAuthRequest(path,options={}){
-  const opts={credentials:'include',...options,headers:{...(options.headers||{})}};
-  if(opts.body && !opts.headers['Content-Type']) opts.headers['Content-Type']='application/json';
-  const response=await fetch(NEON_AUTH_BASE+'/'+path.replace(/^\//,''),opts);
-  const payload=await response.json().catch(()=>({}));
-  if(!response.ok){
-    const detail=payload?.message||payload?.error?.message||payload?.error||('HTTP '+response.status);
-    const error=new Error(String(detail));
-    error.status=response.status;
-    throw error;
+  const auth=await getNeonAuthClient();
+  let body={};
+  if(options.body){
+    try{body=typeof options.body==='string'?JSON.parse(options.body):options.body;}catch(e){body={};}
   }
-  return payload;
+  let result;
+  if(path==='sign-in/email') result=await auth.signIn.email(body);
+  else if(path==='get-session') result=await auth.getSession();
+  else if(path==='sign-out') result=await auth.signOut();
+  else if(path==='request-password-reset') result=await auth.requestPasswordReset(body);
+  else if(path==='reset-password') result=await auth.resetPassword(body);
+  else throw new Error('Auth method not configured: '+path);
+  if(result?.error){
+    const e= new Error(result.error.message||'Authentication failed');
+    e.status=result.error.status||400;
+    throw e;
+  }
+  return result?.data||result;
 }
 let cloudOverrides={};
 let cloudReady=false;
