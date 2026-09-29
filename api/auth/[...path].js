@@ -27,7 +27,7 @@ module.exports = async function handler(req, res) {
   const path = normalizePath(req.query?.path);
   if (!path) return res.status(400).json({ error: "Missing auth path" });
 
-  const target = NEON_AUTH_URL.replace(/\/$/, "") + "/" + path;
+  const target = NEON_AUTH_URL.replace(/\/$/, "") + "/api/auth/" + path;
   const headers = {};
   if (req.headers.cookie) headers.cookie = req.headers.cookie;
   if (req.headers["content-type"]) headers["content-type"] = req.headers["content-type"];
