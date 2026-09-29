@@ -100,12 +100,20 @@ module.exports = async function handler(req, res) {
         if (counts.some(r => !Number.isInteger(r.value) || r.value < 0) || counts.reduce((n, r) => n + r.value, 0) <= 0) {
           return setJson(res, 400, { error: "Invalid rating counts" });
         }
+        // Substitui a distribuição inteira com INSERTs simples e explícitos.
+        // Evita depender de jsonb_to_recordset, que pode gerar 500 em algumas
+        // configurações do Postgres/Neon.
         await sql`DELETE FROM public.airbnb_dashboard WHERE user_id = ${user.id}::uuid AND tipo = 'rating'`;
-        const rows = await sql`INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
-          SELECT ${user.id}::uuid, 2021, 0, r.valor, 'rating', r.categoria
-          FROM jsonb_to_recordset(${JSON.stringify(counts.map(r => ({valor:r.value,categoria:r.star})))}::jsonb)
-          AS r(valor numeric, categoria text)
-          RETURNING id, ano, mes, valor, tipo, categoria`;
+        const rows = [];
+        for (const r of counts) {
+          const inserted = await sql`INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
+            VALUES (${user.id}::uuid, 2021, 0, ${r.value}, 'rating', ${r.star})
+            RETURNING id, ano, mes, valor, tipo, categoria`;
+          if (inserted[0]) rows.push(inserted[0]);
+        }
+        if (rows.length !== 5) {
+          throw new Error('Neon inseriu apenas '+rows.length+' de 5 notas.');
+        }
         return setJson(res, 200, { ok: true, rows });
       }
       const ano = Number(body.ano);
