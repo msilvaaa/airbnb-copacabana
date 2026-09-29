@@ -307,7 +307,10 @@ async function apiRequest(method,body,publicRead=false){
   }catch(e){console.error('Neon Auth token error:',e)}
   const options={method,credentials:'include',headers};
   if(body!==undefined) options.body=JSON.stringify(body);
-  const endpoint=publicRead?'/api/airbnb-dashboard?public=1':'/api/airbnb-dashboard';
+  const endpoint=publicRead
+    ? '/api/airbnb-dashboard?public=1&_sync='+Date.now()
+    : '/api/airbnb-dashboard';
+  if(publicRead) options.cache='no-store';
   const response=await fetch(endpoint,options);
   const payload=await response.json().catch(()=>({}));
   if(!response.ok){
@@ -1059,9 +1062,15 @@ window.addEventListener('pageshow',async()=>{
 // os dados automaticamente, sem depender do localStorage.
 setInterval(async()=>{
   if(document.visibilityState!=='visible')return;
-  if(qs('editModal')?.classList.contains('open') || qs('loginModal')?.classList.contains('open'))return;
-  await refreshCloudData();
-},15000);
+  // Sincroniza a nota mesmo com o editor aberto; os campos do formulário
+  // só são alterados ao entrar novamente em "Nota das avaliações".
+  try{
+    const synced=await refreshCloudData();
+    if(synced && !qs('editModal')?.classList.contains('open')){
+      renderRating();
+    }
+  }catch(e){console.error('Neon periodic sync error',e)}
+},10000);
 
 /* Limpeza automática de dados TEMPORÁRIOS ao sair/fechar a página.
    Não toca no localStorage: os dados do botão "Editar dados" e o usuário salvo permanecem. */
