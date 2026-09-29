@@ -22,39 +22,15 @@ function decodeCookieBundle(value) {
 }
 
 async function authenticateRequest(req) {
-  // Prioriza o JWT enviado pelo cliente Neon Auth. O endpoint JWKS
-  // oficial do Neon Auth termina em /.well-known/jwks.json.
   const bearer = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i);
   if (bearer) {
     try {
       const { jwtVerify } = await import('jose');
       const jwks = await getJwks();
-      const { payload } = await jwtVerify(bearer[1], jwks);
+      const { payload } = await jwtVerify(bearer[1], jwks, { issuer: NEON_AUTH_ISSUER });
       if (payload?.sub) return { id: String(payload.sub), email: payload.email || null };
     } catch (error) {
       console.error('Neon Auth JWT verification error:', error?.message || error);
-    }
-  }
-
-  let cookie = req.headers.cookie || '';
-  const bundleMatch = cookie.match(/(?:^|;\s*)airbnb_neon_auth_bundle=([^;]+)/);
-  if (bundleMatch) {
-    const bundled = decodeCookieBundle(bundleMatch[1]);
-    if (bundled) cookie = bundled;
-  }
-  if (cookie) {
-    try {
-      const response = await fetch(NEON_AUTH_URL.replace(/\/$/, '') + '/get-session', {
-        method: 'GET',
-        headers: { cookie, accept: 'application/json' }
-      });
-      if (response.ok) {
-        const data = await response.json().catch(() => ({}));
-        const user = data?.user || data?.session?.user;
-        if (user?.id) return { id: String(user.id), email: user.email || null };
-      }
-    } catch (error) {
-      console.error('Neon Auth session verification error:', error?.message || error);
     }
   }
   return null;
