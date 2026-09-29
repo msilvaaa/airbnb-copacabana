@@ -127,6 +127,11 @@ module.exports = async function handler(req, res) {
             state = EXCLUDED.state,
             updated_at = now()
         `;
+        // Editor state is a standalone operation. Do not fall through to
+        // the generic row validator when there is no dashboard row payload.
+        if (body.ratingCounts === undefined && body.ano === undefined && body.valor === undefined) {
+          return setJson(res, 200, { ok: true, editorState: state });
+        }
       }
       if (body.ratingCounts && typeof body.ratingCounts === "object") {
         const counts = {};
