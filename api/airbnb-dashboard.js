@@ -41,9 +41,25 @@ function setJson(res, status, payload) {
 }
 
 async function ensureRatingTable() {
-  // A tabela já existe no Neon; não cria objetos durante cada requisição.
-  const rows = await sql`SELECT to_regclass('public.airbnb_rating_config') AS table_name`;
-  if (!rows[0]?.table_name) throw new Error('Tabela public.airbnb_rating_config não encontrada no banco da Vercel.');
+  // Faz a migração de forma idempotente: se a tabela ainda não estiver
+  // no banco conectado pela Vercel, cria a estrutura necessária.
+  await sql`
+    CREATE TABLE IF NOT EXISTS public.airbnb_rating_config (
+      id integer PRIMARY KEY,
+      nota_5 integer NOT NULL DEFAULT 0,
+      nota_4 integer NOT NULL DEFAULT 0,
+      nota_3 integer NOT NULL DEFAULT 0,
+      nota_2 integer NOT NULL DEFAULT 0,
+      nota_1 integer NOT NULL DEFAULT 0,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`
+    INSERT INTO public.airbnb_rating_config
+      (id, nota_5, nota_4, nota_3, nota_2, nota_1)
+    VALUES (1, 114, 3, 0, 0, 0)
+    ON CONFLICT (id) DO NOTHING
+  `;
 }
 function ratingRows(r) {
   if (!r) return [];
