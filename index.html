@@ -543,7 +543,7 @@ function renderRating(){
   if(nextEl){
     nextEl.textContent=nextTarget>=5
       ? (fiveNeeded===0?'Nota 5,00 alcançada.':'Faltam '+fiveNeeded+' avaliações 5 estrelas para alcançar 5,00.')
-      : 'Faltam '+nextNeeded+' avaliações 5 estrelas para alcançar '+formatRating(nextTarget);
+      : 'Faltam '+nextNeeded+' avaliações para alcançar '+formatRating(nextTarget);
   }
   if(fiveEl){
     fiveEl.innerHTML=fiveNeeded===0
