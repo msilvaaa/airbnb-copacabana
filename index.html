@@ -1035,8 +1035,8 @@ function resetFiltersToDefault(){
 // Ao abrir/reabrir o site, aguarda a leitura do Neon antes de desenhar
 // os valores. Assim o usuário não vê um valor provisório que muda sozinho.
 async function startDashboard(){
-  // O Neon é a fonte oficial para visualização. O snapshot local só entra
-  // como plano B quando a leitura remota estiver indisponível.
+  // Uma única leitura inicial. Depois de renderizar, os valores ficam estáveis
+  // e não há atualização automática dos gráficos enquanto a página estiver aberta.
   const snap=loadCloudSnapshot();
   const fallback=()=>{
     if(snap?.overrides){
@@ -1050,41 +1050,34 @@ async function startDashboard(){
     }
   };
   try{
-    await loadCloudOverrides(true);
-    if(cloudReady){
-      DATA=loadMergedData();
-      years=getYears();
-      resetFiltersToDefault();
-      renderRating();
-      renderAll();
-    }else fallback();
-    await initCloud();
+    const session=await neonAuthRequest('get-session',{method:'GET'});
+    const user=session?.user||session?.session?.user;
+    if(user){
+      cloudUser=user;
+      await migrateLegacyIfNeeded();
+      await loadCloudOverrides(false);
+    }else{
+      await loadCloudOverrides(true);
+    }
+    if(!cloudReady){fallback();return;}
+    DATA=loadMergedData();
+    years=getYears();
+    resetFiltersToDefault();
+    renderRating();
+    renderAll();
   }catch(e){
     console.error('Dashboard startup sync error',e);
     fallback();
   }
 }
-[5,4,3,2,1].forEach(s=>qs('rating'+s)?.addEventListener('input',updateRatingPreview));renderRating();initMonthPickers();handlePasswordRecovery();startDashboard();
-window.addEventListener('pageshow',async()=>{
-  await refreshCloudData();
-  if(!cloudReady) resetFiltersToDefault();
-});
+[5,4,3,2,1].forEach(s=>qs('rating'+s)?.addEventListener('input',updateRatingPreview));
+renderRating();
+initMonthPickers();
+handlePasswordRecovery();
+startDashboard();
 
-// Mantém todas as máquinas sincronizadas com o Neon enquanto o dashboard
-// estiver aberto. A máquina que editou salva no Neon; as demais recarregam
-// os dados automaticamente, sem depender do localStorage.
-setInterval(async()=>{
-  if(document.visibilityState!=='visible')return;
-  // Sincroniza a nota mesmo com o editor aberto; os campos do formulário
-  // só são alterados ao entrar novamente em "Nota das avaliações".
-  try{
-    const synced=await refreshCloudData();
-    if(synced && !qs('editModal')?.classList.contains('open')){
-      renderRating();
-    }
-  }catch(e){console.error('Neon periodic sync error',e)}
-},10000);
-
+/* A tela fica estável depois do carregamento inicial.
+   Não recarrega gráficos, KPIs ou valores em background. */
 /* Limpeza automática de dados TEMPORÁRIOS ao sair/fechar a página.
    Não toca no localStorage: os dados do botão "Editar dados" e o usuário salvo permanecem. */
 (function(){
