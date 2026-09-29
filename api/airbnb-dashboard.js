@@ -52,6 +52,28 @@ module.exports = async function handler(req, res) {
 
   if (!sql) return setJson(res, 503, { error: "Neon is not configured" });
 
+  const isPublicRead = req.method === "GET" && (req.query?.public === "1" || req.query?.public === "true");
+
+  if (isPublicRead) {
+    try {
+      const rows = await sql`
+        SELECT id, ano, mes, valor, tipo, categoria
+        FROM public.airbnb_dashboard
+        WHERE user_id = (
+          SELECT user_id
+          FROM public.airbnb_dashboard
+          ORDER BY id DESC
+          LIMIT 1
+        )
+        ORDER BY id ASC
+      `;
+      return setJson(res, 200, { rows, public: true });
+    } catch (error) {
+      console.error("Neon public read error:", error);
+      return setJson(res, 500, { error: error?.message || "Internal server error" });
+    }
+  }
+
   const user = await authenticate(req);
   if (!user?.id) return setJson(res, 401, { error: "Unauthorized" });
 
