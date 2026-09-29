@@ -437,9 +437,12 @@ function formatRating(v){return v==null?'—':v.toLocaleString('pt-BR',{minimumF
 function renderRating(){const v=calculateRating(getRatingCounts());const el=document.querySelector('.rating');if(el)el.textContent='★ '+formatRating(v);}
 function updateRatingPreview(){const c={};[5,4,3,2,1].forEach(s=>c[s]=Math.max(0,Math.floor(Number(qs('rating'+s).value)||0)));const n=c[5]+c[4]+c[3]+c[2]+c[1],v=calculateRating(c);qs('ratingResult').textContent='Nota calculada: '+(v==null?'—':formatRating(v))+' · '+n+' avaliações';}
 async function saveRating(c){
-  if(!cloudUser){
-    qs('saveState').textContent='Sessão do Neon não encontrada. Entre novamente para salvar.';
-    return false;
+  // Renova a sessão antes da gravação para evitar salvar apenas localmente
+  // quando o navegador ainda mostra o usuário conectado, mas a sessão/API
+  // já expirou ou está desatualizada.
+  const sessionOk=await refreshEditorSession();
+  if(!sessionOk){
+    throw new Error('Sessão do Neon não está ativa neste dispositivo. Entre novamente.');
   }
   try{
     const payload=await apiRequest('POST',{ratingCounts:{5:Number(c[5]),4:Number(c[4]),3:Number(c[3]),2:Number(c[2]),1:Number(c[1])}});
@@ -452,8 +455,7 @@ async function saveRating(c){
     return true;
   }catch(e){
     console.error('Rating save error:',e);
-    qs('saveState').textContent='Erro ao salvar no Neon: '+(e?.message||'falha desconhecida');
-    return false;
+    throw e;
   }
 }
 async function clearRating(){if(cloudReady&&cloudUser){try{for(const s of [5,4,3,2,1])await apiRequest('DELETE',{ano:2021,mes:0,tipo:'rating',categoria:String(s)});await loadCloudOverrides();return true;}catch(e){console.error(e);return false;}}const o=loadOverrides();delete o.rating;saveOverrides(o);return true;}
@@ -872,7 +874,7 @@ function syncEditValue(){const y=String(qs('editYear').value||''),m=Number(qs('e
   const saved=o[t]?.[y]?.[String(m)],current=DATA[t]?.[y]?.[m];qs('editValue').value=saved??(current??'');qs('saveState').textContent=saved!=null?'Existe um lançamento manual salvo.':'Valor original / vazio.'
 }
 qs('confirmAddValueBtn').addEventListener('click',()=>{const add=Number(qs('editAddValue').value||0),base=Number(qs('editValue').value||0);if(!Number.isFinite(add)||add<0){qs('saveState').textContent='Informe um valor válido para somar.';return}qs('editValue').value=(base+add).toFixed(2);qs('editAddValue').value='';qs('saveState').textContent='Valor somado. Confira o novo total e clique em Salvar.'});
-qs('saveEditBtn').addEventListener('click',async()=>{const t=qs('editType').value;if(t==='rating'){const c={};for(const s of [5,4,3,2,1]){const v=Number(qs('rating'+s).value);if(!Number.isInteger(v)||v<0){qs('saveState').textContent='Informe quantidades inteiras e não negativas.';return}c[s]=v;}if(c[5]+c[4]+c[3]+c[2]+c[1]===0){qs('saveState').textContent='Informe pelo menos uma avaliação.';return}qs('saveState').textContent='Salvando no Neon...';const ok=await saveRating(c);renderRating();qs('saveState').textContent=ok?'Nota salva no Neon — disponível em todos os dispositivos.':'Não foi possível salvar a nota.';return;}const y=Number(qs('editYear').value),m=Number(qs('editMonth').value),baseValue=Number(qs('editValue').value),addValue=Number(qs('editAddValue').value||0),v=baseValue+addValue;if(!y||y<2021||m<0||m>11||!Number.isFinite(v)||v<0){qs('saveState').textContent='Preencha ano, mês e um valor válido.';return}qs('saveState').textContent='Salvando no Neon...';let ok;if(t==='fixedCategory'){const name=qs('editCategory').value;if(!name){qs('saveState').textContent='Selecione uma categoria.';return}ok=await saveCategoryOverride(y,m,name,v)}else ok=await setOverride(t,y,m,v);setSelects();qs('yearSelect').value=String(y);qs('monthStartSelect').value=String(m);renderAll();qs('saveState').textContent=ok?'Salvo no Neon — disponível em todos os dispositivos.':'Não foi possível salvar no Neon.';qs('editAddValue').value='';})
+qs('saveEditBtn').addEventListener('click',async()=>{const t=qs('editType').value;if(t==='rating'){const c={};for(const s of [5,4,3,2,1]){const v=Number(qs('rating'+s).value);if(!Number.isInteger(v)||v<0){qs('saveState').textContent='Informe quantidades inteiras e não negativas.';return}c[s]=v;}if(c[5]+c[4]+c[3]+c[2]+c[1]===0){qs('saveState').textContent='Informe pelo menos uma avaliação.';return}qs('saveState').textContent='Salvando no Neon...';try{await saveRating(c);renderRating();qs('saveState').textContent='Nota salva no Neon — disponível em todos os dispositivos.';}catch(e){console.error('Rating editor save error:',e);qs('saveState').textContent='Erro ao salvar no Neon: '+(e?.message||'falha desconhecida');}return;}const y=Number(qs('editYear').value),m=Number(qs('editMonth').value),baseValue=Number(qs('editValue').value),addValue=Number(qs('editAddValue').value||0),v=baseValue+addValue;if(!y||y<2021||m<0||m>11||!Number.isFinite(v)||v<0){qs('saveState').textContent='Preencha ano, mês e um valor válido.';return}qs('saveState').textContent='Salvando no Neon...';let ok;if(t==='fixedCategory'){const name=qs('editCategory').value;if(!name){qs('saveState').textContent='Selecione uma categoria.';return}ok=await saveCategoryOverride(y,m,name,v)}else ok=await setOverride(t,y,m,v);setSelects();qs('yearSelect').value=String(y);qs('monthStartSelect').value=String(m);renderAll();qs('saveState').textContent=ok?'Salvo no Neon — disponível em todos os dispositivos.':'Não foi possível salvar no Neon.';qs('editAddValue').value='';})
 qs('clearEditBtn').addEventListener('click',async()=>{const t=qs('editType').value;if(t==='rating'){qs('saveState').textContent='Removendo a nota salva...';const ok=await clearRating();renderRating();updateEditorMode();qs('saveState').textContent=ok?'Nota removida. Voltou aos valores padrão.':'Não foi possível remover a nota.';return;}const y=Number(qs('editYear').value),m=Number(qs('editMonth').value);qs('saveState').textContent='Removendo do Neon...';let ok;if(t==='fixedCategory')ok=await clearCategoryOverride(y,m,qs('editCategory').value);else ok=await clearOverride(t,y,m);syncEditValue();setSelects();qs('yearSelect').value=String(y);qs('monthStartSelect').value=String(m);renderAll();qs('saveState').textContent=ok?'Lançamento removido do Neon.':'Não foi possível remover o lançamento.'})
 qs('resetSavedBtn').addEventListener('click',async()=>{
   if(!confirm('Tem certeza que deseja apagar TODAS as alterações salvas?\n\nEsta ação removerá todos os lançamentos manuais salvos de todos os meses e tipos de dados. Os valores originais do dashboard não serão apagados.\n\nDeseja realmente continuar?'))return;
