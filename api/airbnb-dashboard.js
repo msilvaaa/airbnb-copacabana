@@ -27,7 +27,7 @@ async function authenticateRequest(req) {
     try {
       const { jwtVerify } = await import('jose');
       const jwks = await getJwks();
-      const { payload } = await jwtVerify(bearer[1], jwks, { issuer: NEON_AUTH_ISSUER });
+      const { payload } = await jwtVerify(bearer[1], jwks);
       if (payload?.sub) return { id: String(payload.sub), email: payload.email || null };
     } catch (error) {
       console.error('Neon Auth JWT verification error:', error?.message || error);
