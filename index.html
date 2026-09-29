@@ -252,12 +252,18 @@ const AIRBNB_PRODUCTION_URL='https://dashboardairbnb706-1.vercel.app/';
 const NEON_AUTH_BASE='/api/auth';
 const NEON_AUTH_URL="https://ep-weathered-smoke-b4g1qnj9.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
 let neonAuthClient=null;
+let neonAuthInternal=null;
 async function getNeonAuthClient(){
   if(!neonAuthClient){
     const mod=await import("https://esm.sh/@neondatabase/auth@latest?bundle");
     neonAuthClient=mod.createAuthClient(NEON_AUTH_URL);
+    neonAuthInternal=mod.createInternalNeonAuth(NEON_AUTH_URL);
   }
   return neonAuthClient;
+}
+async function getNeonAuthTokenClient(){
+  await getNeonAuthClient();
+  return neonAuthInternal;
 }
 async function neonAuthRequest(path,options={}){
   const auth=await getNeonAuthClient();
@@ -285,8 +291,8 @@ let cloudUser=null;
 
 async function getAuthAccessToken(){
   try{
-    const auth=await getNeonAuthClient();
-    return await auth.getJWTToken?.() || null;
+    const auth=await getNeonAuthTokenClient();
+    return await auth.getJWTToken() || null;
   }catch(e){
     console.error('Neon Auth JWT error:',e);
     return null;
