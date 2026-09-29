@@ -2,7 +2,7 @@ const { neon } = require("@neondatabase/serverless");
 
 const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null;
 const NEON_AUTH_URL = process.env.NEON_AUTH_BASE_URL || process.env.NEON_AUTH_URL || "https://ep-weathered-smoke-b4g1qnj9.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
-const NEON_AUTH_JWKS_URL = NEON_AUTH_URL.replace(/\/$/, "") + "/.well-known/jwks";
+const NEON_AUTH_JWKS_URL = NEON_AUTH_URL.replace(/\/$/, "") + "/.well-known/jwks.json";
 
 let jwksPromise;
 async function getJwks() {
@@ -22,13 +22,26 @@ function decodeCookieBundle(value) {
 }
 
 async function authenticateRequest(req) {
+  // Prioriza o JWT enviado pelo cliente Neon Auth. O endpoint JWKS
+  // oficial do Neon Auth termina em /.well-known/jwks.json.
+  const bearer = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i);
+  if (bearer) {
+    try {
+      const { jwtVerify } = await import('jose');
+      const jwks = await getJwks();
+      const { payload } = await jwtVerify(bearer[1], jwks);
+      if (payload?.sub) return { id: String(payload.sub), email: payload.email || null };
+    } catch (error) {
+      console.error('Neon Auth JWT verification error:', error?.message || error);
+    }
+  }
+
   let cookie = req.headers.cookie || '';
   const bundleMatch = cookie.match(/(?:^|;\s*)airbnb_neon_auth_bundle=([^;]+)/);
   if (bundleMatch) {
     const bundled = decodeCookieBundle(bundleMatch[1]);
     if (bundled) cookie = bundled;
   }
-
   if (cookie) {
     try {
       const response = await fetch(NEON_AUTH_URL.replace(/\/$/, '') + '/get-session', {
@@ -44,19 +57,6 @@ async function authenticateRequest(req) {
       console.error('Neon Auth session verification error:', error?.message || error);
     }
   }
-
-  const bearer = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i);
-  if (bearer) {
-    try {
-      const { jwtVerify } = await import('jose');
-      const jwks = await getJwks();
-      const { payload } = await jwtVerify(bearer[1], jwks);
-      if (payload?.sub) return { id: String(payload.sub), email: payload.email || null };
-    } catch (error) {
-      console.error('Neon Auth JWT verification error:', error?.message || error);
-    }
-  }
-
   return null;
 }
 
