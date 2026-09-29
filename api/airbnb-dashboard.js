@@ -116,18 +116,21 @@ module.exports = async function handler(req, res) {
           return setJson(res, 400, { error: "Invalid rating counts" });
         }
         await ensureRatingTable();
-        const exists = await sql`SELECT id FROM public.airbnb_rating_config WHERE id = 1`;
-        if (exists.length) {
-          await sql`UPDATE public.airbnb_rating_config
-            SET nota_5 = ${values[0]}, nota_4 = ${values[1]}, nota_3 = ${values[2]},
-                nota_2 = ${values[3]}, nota_1 = ${values[4]}, updated_at = now()
-            WHERE id = 1`;
-        } else {
-          await sql`INSERT INTO public.airbnb_rating_config
+        // Upsert atômico: a própria operação grava e devolve os valores
+        // efetivamente persistidos na mesma conexão com o Neon.
+        const current = await sql`
+          INSERT INTO public.airbnb_rating_config
             (id, nota_5, nota_4, nota_3, nota_2, nota_1, updated_at)
-            VALUES (1, ${values[0]}, ${values[1]}, ${values[2]}, ${values[3]}, ${values[4]}, now())`;
-        }
-        const current = await sql`SELECT nota_5, nota_4, nota_3, nota_2, nota_1 FROM public.airbnb_rating_config WHERE id = 1`;
+          VALUES (1, ${values[0]}, ${values[1]}, ${values[2]}, ${values[3]}, ${values[4]}, now())
+          ON CONFLICT (id) DO UPDATE SET
+            nota_5 = EXCLUDED.nota_5,
+            nota_4 = EXCLUDED.nota_4,
+            nota_3 = EXCLUDED.nota_3,
+            nota_2 = EXCLUDED.nota_2,
+            nota_1 = EXCLUDED.nota_1,
+            updated_at = now()
+          RETURNING nota_5, nota_4, nota_3, nota_2, nota_1
+        `;
         return setJson(res, 200, { ok: true, rows: ratingRows(current[0]) });
       }
       const ano = Number(body.ano);
