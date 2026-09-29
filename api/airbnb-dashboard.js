@@ -53,15 +53,9 @@ function setJson(res, status, payload) {
 }
 
 async function ensureRatingTable() {
-  await sql`CREATE TABLE IF NOT EXISTS public.airbnb_rating_config (
-    id smallint PRIMARY KEY,
-    nota_5 integer NOT NULL DEFAULT 0,
-    nota_4 integer NOT NULL DEFAULT 0,
-    nota_3 integer NOT NULL DEFAULT 0,
-    nota_2 integer NOT NULL DEFAULT 0,
-    nota_1 integer NOT NULL DEFAULT 0,
-    updated_at timestamptz NOT NULL DEFAULT now()
-  )`;
+  // A tabela já existe no Neon; não cria objetos durante cada requisição.
+  const rows = await sql`SELECT to_regclass('public.airbnb_rating_config') AS table_name`;
+  if (!rows[0]?.table_name) throw new Error('Tabela public.airbnb_rating_config não encontrada no banco da Vercel.');
 }
 function ratingRows(r) {
   if (!r) return [];
@@ -118,16 +112,17 @@ module.exports = async function handler(req, res) {
           return setJson(res, 400, { error: "Invalid rating counts" });
         }
         await ensureRatingTable();
-        await sql`
-          INSERT INTO public.airbnb_rating_config (id, nota_5, nota_4, nota_3, nota_2, nota_1, updated_at)
-          VALUES (1, ${values[0]}, ${values[1]}, ${values[2]}, ${values[3]}, ${values[4]}, now())
-          ON CONFLICT (id) DO UPDATE SET
-            nota_5 = EXCLUDED.nota_5,
-            nota_4 = EXCLUDED.nota_4,
-            nota_3 = EXCLUDED.nota_3,
-            nota_2 = EXCLUDED.nota_2,
-            nota_1 = EXCLUDED.nota_1,
-            updated_at = now()`;
+        const exists = await sql`SELECT id FROM public.airbnb_rating_config WHERE id = 1`;
+        if (exists.length) {
+          await sql`UPDATE public.airbnb_rating_config
+            SET nota_5 = \${values[0]}, nota_4 = \${values[1]}, nota_3 = \${values[2]},
+                nota_2 = \${values[3]}, nota_1 = \${values[4]}, updated_at = now()
+            WHERE id = 1`;
+        } else {
+          await sql`INSERT INTO public.airbnb_rating_config
+            (id, nota_5, nota_4, nota_3, nota_2, nota_1, updated_at)
+            VALUES (1, \${values[0]}, \${values[1]}, \${values[2]}, \${values[3]}, \${values[4]}, now())`;
+        }
         const current = await sql`SELECT nota_5, nota_4, nota_3, nota_2, nota_1 FROM public.airbnb_rating_config WHERE id = 1`;
         return setJson(res, 200, { ok: true, rows: ratingRows(current[0]) });
       }
