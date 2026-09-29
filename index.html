@@ -223,11 +223,11 @@ body.dark .controls .ctrl:nth-child(2) select,body.dark .controls .ctrl:nth-chil
 
 <div class="modal-backdrop" id="loginModal">
   <div class="login-card">
-    <form id="loginForm" autocomplete="on" novalidate>
+    <form id="loginForm" autocomplete="off" novalidate>
       <div class="login-brand"><div class="login-logo">🔒</div><div><strong>Acesso ao editor</strong><div style="font-size:11px;color:var(--muted);margin-top:2px">Área protegida</div></div></div>
       <h2>Autenticação</h2>
       <p>Entre com seu e-mail e senha do Neon para editar os dados do dashboard.</p>
-      <div class="field"><label for="loginUser">E-mail</label><input id="loginUser" name="username" type="email" autocomplete="username" value="msilvawork@gmail.com" placeholder="seu e-mail" inputmode="email"></div>
+      <div class="field"><label for="loginUser">E-mail</label><input id="loginUser" name="username" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" data-form-type="other" value="msilvawork@gmail.com" placeholder="seu e-mail" inputmode="email"></div>
       <div class="field" style="margin-top:12px"><label for="loginPass">Senha</label><div class="password-wrap"><input id="loginPass" name="password" type="password" autocomplete="current-password" placeholder="Senha"><button class="toggle-pass" id="togglePass" type="button" aria-label="Mostrar senha">👁</button></div></div>
       <div class="login-error" id="loginError"></div>
       <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="toggle-pass" id="forgotPassBtn" type="button" style="position:static;transform:none;padding:4px 0">Esqueci a senha</button></div><div class="login-actions"><button class="action" id="cancelLoginBtn" type="button">Cancelar</button><button class="action primary" id="loginBtn" type="submit">Entrar</button></div>
