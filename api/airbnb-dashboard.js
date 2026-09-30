@@ -73,7 +73,6 @@ function ratingRows(r) {
   return [5,4,3,2,1].map(s => ({ id: 0, ano: 2021, mes: 0, valor: Number(r['nota_'+s] || 0), tipo: 'rating', categoria: String(s) }));
 }
 async function readRatingRows() {
-  await ensureRatingTable();
   const rows = await sql`SELECT nota_5, nota_4, nota_3, nota_2, nota_1 FROM public.airbnb_rating_config WHERE id = 1`;
   return ratingRows(rows[0]);
 }
