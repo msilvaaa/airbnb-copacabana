@@ -1134,29 +1134,36 @@ function resetFiltersToDefault(){
 // Ao abrir/reabrir o site, aguarda a leitura do Neon antes de desenhar
 // os valores. Assim o usuário não vê um valor provisório que muda sozinho.
 async function startDashboard(){
-  // Não renderiza valores provisórios. Primeiro lê a fonte oficial compartilhada
-  // e a nota no Neon; depois desenha a tela uma única vez.
-  try{
-    await loadSharedDashboardData();
+  // Mostra imediatamente o último estado confirmado no Neon e faz a conferência
+  // atual em segundo plano. Assim a tela abre rápido sem trocar números por
+  // valores provisórios.
+  const snap=loadCloudSnapshot();
+  let renderedFromSnapshot=false;
+  if(snap?.overrides){
+    cloudOverrides=snap.overrides;
+    cloudReady=true;
     DATA=loadMergedData();
     years=getYears();
     resetFiltersToDefault();
     renderRating();
     renderAll();
-  }catch(e){
-    console.error('Dashboard startup sync error',e);
-    // Em caso de falha real de leitura, mantém o último snapshot somente como
-    // fallback, sem trocar de valores depois que a tela já estiver desenhada.
-    const snap=loadCloudSnapshot();
-    if(snap?.overrides){
-      cloudOverrides=snap.overrides;
-      cloudReady=true;
-      DATA=loadMergedData();
-      years=getYears();
+    renderedFromSnapshot=true;
+  }
+  try{
+    const previous=renderedFromSnapshot?JSON.stringify(cloudOverrides):null;
+    await loadSharedDashboardData();
+    const latest=JSON.stringify(cloudOverrides);
+    DATA=loadMergedData();
+    years=getYears();
+    if(!renderedFromSnapshot||latest!==previous){
       resetFiltersToDefault();
       renderRating();
       renderAll();
-    }else{
+    }
+    saveCloudSnapshot();
+  }catch(e){
+    console.error('Dashboard startup sync error',e);
+    if(!renderedFromSnapshot){
       const el=document.querySelector('.rating');
       if(el) el.textContent='★ —';
     }
