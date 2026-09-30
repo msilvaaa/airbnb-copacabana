@@ -85,8 +85,10 @@ module.exports = async function handler(req, res) {
 
   if (isPublicRead) {
     try {
-      const rows = await sql`SELECT id, ano, mes, valor, tipo, categoria FROM public.airbnb_dashboard ORDER BY id ASC`;
-      const ratings = await readRatingRows();
+      const [rows, ratings] = await Promise.all([
+        sql`SELECT id, ano, mes, valor, tipo, categoria FROM public.airbnb_dashboard ORDER BY id ASC`,
+        readRatingRows()
+      ]);
       return setJson(res, 200, { rows: rows.concat(ratings), public: true });
     } catch (error) {
       console.error("Neon public read error:", error);
