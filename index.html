@@ -251,6 +251,15 @@ body.dark .controls .ctrl:nth-child(2) select,body.dark .controls .ctrl:nth-chil
 </div>
 
 <script>
+/* Compatibilidade para navegadores mais antigos, incluindo Safari. */
+if(!Array.prototype.flatMap){
+  Array.prototype.flatMap=function(callback,thisArg){
+    return this.reduce(function(acc,item,index,array){
+      var value=callback.call(thisArg,item,index,array);
+      return acc.concat(Array.isArray(value)?value:[value]);
+    },[]);
+  };
+}
 const AIRBNB_PRODUCTION_URL='https://dashboardairbnb706-1.vercel.app/';
 const NEON_AUTH_BASE='/api/auth';
 const NEON_AUTH_URL="https://ep-weathered-smoke-b4g1qnj9.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth";
@@ -302,6 +311,16 @@ async function getAuthAccessToken(){
     return null;
   }
 }
+function fetchWithTimeout(url,options={},timeoutMs=5000){
+  return new Promise(function(resolve,reject){
+    var timer=setTimeout(function(){reject(new Error('Tempo limite da conexão'))},timeoutMs);
+    fetch(url,options).then(function(response){
+      clearTimeout(timer);resolve(response);
+    }).catch(function(error){
+      clearTimeout(timer);reject(error);
+    });
+  });
+}
 async function apiRequest(method,body,publicRead=false){
   const headers=publicRead?{}:{'Content-Type':'application/json'};
   if(!publicRead){
@@ -315,11 +334,8 @@ async function apiRequest(method,body,publicRead=false){
   const endpoint=publicRead
     ? '/api/airbnb-dashboard?public=1&_sync='+Date.now()
     : '/api/airbnb-dashboard';
-  if(publicRead){
-    options.cache='no-store';
-    options.signal=AbortSignal.timeout(5000);
-  }
-  const response=await fetch(endpoint,options);
+  if(publicRead) options.cache='no-store';
+  const response=await fetchWithTimeout(endpoint,options,5000);
   const payload=await response.json().catch(()=>({}));
   if(!response.ok){
     const err=new Error(payload?.error||('HTTP '+response.status));
