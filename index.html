@@ -1248,11 +1248,21 @@ qs('editModalClose').addEventListener('click',()=>qs('editModal').classList.remo
 document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.querySelectorAll('section[id^="tab-"]').forEach(s=>s.classList.add('hidden'));btn.classList.add('active');const target=qs('tab-'+btn.dataset.tab);target.classList.remove('hidden');try{renderAll()}catch(e){console.error('Erro ao renderizar o dashboard:',e)}if(btn.dataset.tab==='balance'){requestAnimationFrame(()=>{try{renderBalance()}catch(e){console.error('Erro ao renderizar Balanço:',e)}setTimeout(()=>{try{renderBalance()}catch(e){console.error('Erro ao renderizar Balanço:',e)}},50)})}}));
 function resetFiltersToDefault(){
   setSelects();
-  qs('yearSelect').value='all';
-  const dateOpts=years.flatMap(y=>Array.from({length:12},(_,m)=>String(y)+'-'+String(m).padStart(2,'0')));
-  qs('monthStartSelect').value=dateOpts[0]||'';
-  qs('monthEndSelect').value=dateOpts[dateOpts.length-1]||'';
-  qs('viewSelect').value='annual';
+  const defaultYear=years.includes('2026')?'2026':(years[years.length-1]||'all');
+  qs('yearSelect').value=defaultYear;
+  if(defaultYear!=='all'){
+    const first=defaultYear+'-00',last=defaultYear+'-11';
+    qs('monthStartSelect').value=first;
+    qs('monthEndSelect').value=last;
+    qs('viewSelect').value='monthly';
+  }else{
+    const dateOpts=years.flatMap(y=>Array.from({length:12},(_,m)=>String(y)+'-'+String(m).padStart(2,'0')));
+    qs('monthStartSelect').value=dateOpts[0]||'';
+    qs('monthEndSelect').value=dateOpts[dateOpts.length-1]||'';
+    qs('viewSelect').value='annual';
+  }
+  syncMonthPickerUI();
+  syncChoicePickerUI();
   renderAll();
 }
 
