@@ -104,10 +104,49 @@ body.dark{--bg:#0b1220;--card:#111827;--ink:#f3f4f6;--muted:#9ca3af;--line:#2430
 .chart-modal-printing .chart-modal-actions{display:none}
 @media print{
   body.chart-modal-printing>*:not(.chart-modal){display:none!important}
-  body.chart-modal-printing .chart-modal{position:static!important;inset:auto!important}
-  body.chart-modal-printing .chart-modal-box{width:100%!important;height:auto!important}
-  body.chart-modal-printing .chart-modal-visual svg{min-height:520px!important;max-height:none!important}
-  @page{size:A4 landscape;margin:10mm}
+  body.chart-modal-printing .chart-modal{position:static!important;inset:auto!important;background:#fff!important;padding:0!important}
+  body.chart-modal-printing .chart-modal-box{
+    width:100%!important;height:auto!important;max-width:none!important;max-height:none!important;
+    border:0!important;border-radius:0!important;box-shadow:none!important;overflow:visible!important;
+  }
+  body.chart-modal-printing .chart-modal-head{padding:8px 12px 8px!important}
+  body.chart-modal-printing .chart-modal-body{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 270px!important;
+    gap:10px!important;
+    padding:8px 12px 12px!important;
+    min-height:0!important;height:auto!important;overflow:visible!important;
+    align-items:start!important;
+  }
+  body.chart-modal-printing .chart-modal-visual{
+    height:420px!important;min-height:420px!important;max-height:420px!important;
+    padding:8px!important;overflow:visible!important;
+  }
+  body.chart-modal-printing .chart-modal-visual svg{
+    width:100%!important;height:100%!important;min-height:0!important;max-height:none!important;
+  }
+  body.chart-modal-printing .chart-details{
+    height:auto!important;max-height:none!important;overflow:visible!important;
+    padding:10px!important;font-size:9px!important;align-self:start!important;
+  }
+  body.chart-modal-printing .detail-summary{gap:5px!important;margin-bottom:8px!important}
+  body.chart-modal-printing .detail-box{padding:7px!important}
+  body.chart-modal-printing .detail-value{font-size:11px!important}
+  body.chart-modal-printing .detail-series{gap:5px!important;margin-bottom:8px!important}
+  body.chart-modal-printing .detail-series-card{padding:7px!important}
+  body.chart-modal-printing .detail-series-name{font-size:9px!important;margin-bottom:5px!important}
+  body.chart-modal-printing .detail-series-grid{gap:4px!important}
+  body.chart-modal-printing .detail-mini{font-size:8px!important}
+  body.chart-modal-printing .detail-mini strong{font-size:10px!important}
+  body.chart-modal-printing .detail-extra{gap:5px!important;margin-bottom:8px!important}
+  body.chart-modal-printing .detail-extra-box{padding:6px!important}
+  body.chart-modal-printing .detail-extra-label{font-size:8px!important}
+  body.chart-modal-printing .detail-extra-value{font-size:9px!important}
+  body.chart-modal-printing .detail-period{font-size:8px!important}
+  body.chart-modal-printing .detail-table{font-size:8px!important}
+  body.chart-modal-printing .detail-table th,.chart-modal-printing .detail-table td{padding:5px 4px!important}
+  body.chart-modal-printing .chart-modal-actions{display:none!important}
+  @page{size:A4 landscape;margin:8mm}
 }
 
 .detail-extra-box.wide{grid-column:1/-1}
