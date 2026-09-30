@@ -315,7 +315,10 @@ async function apiRequest(method,body,publicRead=false){
   const endpoint=publicRead
     ? '/api/airbnb-dashboard?public=1&_sync='+Date.now()
     : '/api/airbnb-dashboard';
-  if(publicRead) options.cache='no-store';
+  if(publicRead){
+    options.cache='no-store';
+    options.signal=AbortSignal.timeout(5000);
+  }
   const response=await fetch(endpoint,options);
   const payload=await response.json().catch(()=>({}));
   if(!response.ok){
@@ -1134,28 +1137,27 @@ function resetFiltersToDefault(){
 // Ao abrir/reabrir o site, aguarda a leitura do Neon antes de desenhar
 // os valores. Assim o usuário não vê um valor provisório que muda sozinho.
 async function startDashboard(){
-  // Mostra imediatamente o último estado confirmado no Neon e faz a conferência
-  // atual em segundo plano. Assim a tela abre rápido sem trocar números por
-  // valores provisórios.
+  // Primeiro desenha imediatamente com o último estado disponível.
+  // Em janela privada, sem snapshot, usa a base embarcada e depois sincroniza
+  // com o Neon em segundo plano. A tela não fica bloqueada esperando o banco.
   const snap=loadCloudSnapshot();
-  let renderedFromSnapshot=false;
   if(snap?.overrides){
     cloudOverrides=snap.overrides;
     cloudReady=true;
-    DATA=loadMergedData();
-    years=getYears();
-    resetFiltersToDefault();
-    renderRating();
-    renderAll();
-    renderedFromSnapshot=true;
   }
+  DATA=loadMergedData();
+  years=getYears();
+  resetFiltersToDefault();
+  renderRating();
+  renderAll();
+
+  const previous=JSON.stringify(cloudOverrides||{});
   try{
-    const previous=renderedFromSnapshot?JSON.stringify(cloudOverrides):null;
     await loadSharedDashboardData();
-    const latest=JSON.stringify(cloudOverrides);
+    const latest=JSON.stringify(cloudOverrides||{});
     DATA=loadMergedData();
     years=getYears();
-    if(!renderedFromSnapshot||latest!==previous){
+    if(latest!==previous){
       resetFiltersToDefault();
       renderRating();
       renderAll();
@@ -1163,10 +1165,7 @@ async function startDashboard(){
     saveCloudSnapshot();
   }catch(e){
     console.error('Dashboard startup sync error',e);
-    if(!renderedFromSnapshot){
-      const el=document.querySelector('.rating');
-      if(el) el.textContent='★ —';
-    }
+    // Mantém a tela já carregada. O Neon não pode bloquear o dashboard.
   }
 }
 [5,4,3,2,1].forEach(s=>qs('rating'+s)?.addEventListener('input',updateRatingPreview));
