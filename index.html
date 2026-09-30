@@ -303,11 +303,13 @@ async function getAuthAccessToken(){
   }
 }
 async function apiRequest(method,body,publicRead=false){
-  const headers={'Content-Type':'application/json'};
-  try{
-    const token=await getAuthAccessToken();
-    if(token) headers.Authorization='Bearer '+token;
-  }catch(e){console.error('Neon Auth token error:',e)}
+  const headers=publicRead?{}:{'Content-Type':'application/json'};
+  if(!publicRead){
+    try{
+      const token=await getAuthAccessToken();
+      if(token) headers.Authorization='Bearer '+token;
+    }catch(e){console.error('Neon Auth token error:',e)}
+  }
   const options={method,credentials:'include',headers};
   if(body!==undefined) options.body=JSON.stringify(body);
   const endpoint=publicRead
@@ -1136,7 +1138,6 @@ async function startDashboard(){
   // e a nota no Neon; depois desenha a tela uma única vez.
   try{
     await loadSharedDashboardData();
-    await syncLiveRating();
     DATA=loadMergedData();
     years=getYears();
     resetFiltersToDefault();
