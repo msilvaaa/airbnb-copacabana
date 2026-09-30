@@ -152,6 +152,7 @@ body.dark{--bg:#0b1220;--card:#111827;--ink:#f3f4f6;--muted:#9ca3af;--line:#2430
 
 /* Seletor de mês em duas etapas: Ano -> Mês */
 .month-native-select{display:none!important}
+.choice-native-select{display:none!important}.choice-picker{position:relative;width:100%}.choice-picker-trigger{width:100%;border:1px solid var(--line);background:var(--bg);padding:10px 12px;border-radius:11px;color:var(--ink);outline:none;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;font-weight:600;min-height:42px}.choice-picker-trigger:hover{border-color:#93c5fd}.choice-picker-trigger:after{content:"⌄";font-size:16px;color:var(--muted);line-height:1}
 .month-picker{position:relative;width:100%}
 .month-picker-trigger{width:100%;border:1px solid var(--line);background:var(--bg);padding:10px 12px;border-radius:11px;color:var(--ink);outline:none;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;font-weight:600;min-height:42px}
 .month-picker-trigger:hover{border-color:#93c5fd}
@@ -796,6 +797,7 @@ function setSelects(){
   qs('editMonth').innerHTML=editOpts;
   syncYearSelectorForView();
   syncMonthPickerUI();
+  syncChoicePickerUI();
 }
 function syncYearSelectorForView(){
   const yearSel=qs('yearSelect'),viewSel=qs('viewSelect');if(!yearSel||!viewSel)return;
@@ -868,6 +870,68 @@ function initMonthPickers(){
   });
   syncMonthPickerUI();
 }
+function initChoicePickers(){
+  ['yearSelect','viewSelect'].forEach(id=>{
+    const sel=qs(id);
+    if(!sel||sel.dataset.choicePickerReady==='1')return;
+    sel.classList.add('choice-native-select');
+    const host=sel.parentElement;
+    const picker=document.createElement('div');
+    picker.className='choice-picker';
+    picker.dataset.forSelect=id;
+    const trigger=document.createElement('button');
+    trigger.type='button';
+    trigger.className='choice-picker-trigger';
+    trigger.setAttribute('aria-haspopup','dialog');
+    trigger.setAttribute('aria-expanded','false');
+    const panel=document.createElement('div');
+    panel.className='month-picker-panel';
+    panel.innerHTML='<div class="month-picker-head"><span class="month-picker-title"></span></div><div class="month-picker-list"></div>';
+    picker.appendChild(trigger);picker.appendChild(panel);host.appendChild(picker);
+    sel.dataset.choicePickerReady='1';
+
+    const close=()=>{panel.classList.remove('open');trigger.setAttribute('aria-expanded','false')};
+    const position=()=>{
+      if(window.innerWidth<=650)return;
+      const r=trigger.getBoundingClientRect();
+      panel.style.left=Math.max(10,Math.min(r.left,window.innerWidth-290))+'px';
+      panel.style.top=Math.min(r.bottom+7,window.innerHeight-440)+'px';
+    };
+    const render=()=>{
+      const list=panel.querySelector('.month-picker-list'),title=panel.querySelector('.month-picker-title');
+      title.textContent=id==='yearSelect'?'Selecionar ano':'Selecionar visão';
+      const options=Array.from(sel.options);
+      list.innerHTML=options.filter(o=>!o.disabled).map(o=>{
+        const active=o.value===sel.value;
+        return '<button type="button" class="month-picker-item'+(active?' selected':'')+'" data-value="'+String(o.value).replace(/"/g,'&quot;')+'"><span>'+o.text+'</span>'+(active?'<span class="month-picker-check">✓</span>':'')+'</button>';
+      }).join('');
+      list.querySelectorAll('[data-value]').forEach(b=>b.addEventListener('click',()=>{
+        sel.value=b.getAttribute('data-value');
+        sel.dispatchEvent(new Event('change',{bubbles:true}));
+        syncChoicePickerUI();
+        close();
+      }));
+    };
+    const open=()=>{panel.classList.add('open');trigger.setAttribute('aria-expanded','true');position();render()};
+    trigger.addEventListener('click',e=>{e.stopPropagation();panel.classList.contains('open')?close():open()});
+    panel.addEventListener('click',e=>e.stopPropagation());
+    document.addEventListener('click',close);
+    window.addEventListener('resize',()=>{if(panel.classList.contains('open'))position()});
+  });
+  syncChoicePickerUI();
+}
+function syncChoicePickerUI(){
+  ['yearSelect','viewSelect'].forEach(id=>{
+    const sel=qs(id),picker=document.querySelector('.choice-picker[data-for-select="'+id+'"]');
+    if(!sel||!picker)return;
+    const trigger=picker.querySelector('.choice-picker-trigger');
+    const opt=sel.options[sel.selectedIndex];
+    trigger.textContent=opt?opt.text:'Selecionar';
+    trigger.setAttribute('aria-label',opt?opt.text:'Selecionar');
+    trigger.setAttribute('aria-expanded',picker.querySelector('.month-picker-panel').classList.contains('open')?'true':'false');
+  });
+}
+
 function syncMonthPickerUI(){
   ['monthStartSelect','monthEndSelect'].forEach(id=>{
     const sel=qs(id),picker=document.querySelector('.month-picker[data-for-select="'+id+'"]');
@@ -1137,7 +1201,7 @@ qs('editModalClose').addEventListener('click',()=>qs('editModal').classList.remo
       yearSel.value=years.includes(startYear)?startYear:(years.includes('2026')?'2026':years[years.length-1]);
     }
   }
-  syncYearSelectorForView();syncMonthPickerUI();renderAll();if(compareMode){const btn=qs('compareBtn');btn.classList.add('active');btn.textContent='↩ Sair da comparação'}
+  syncYearSelectorForView();syncMonthPickerUI();syncChoicePickerUI();renderAll();if(compareMode){const btn=qs('compareBtn');btn.classList.add('active');btn.textContent='↩ Sair da comparação'}
 }));qs('themeBtn').addEventListener('click',()=>{document.body.classList.toggle('dark');qs('themeBtn').textContent=document.body.classList.contains('dark')?'☀':'☾';renderAll()});qs('printBtn').addEventListener('click',()=>window.print());
 document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.querySelectorAll('section[id^="tab-"]').forEach(s=>s.classList.add('hidden'));btn.classList.add('active');const target=qs('tab-'+btn.dataset.tab);target.classList.remove('hidden');try{renderAll()}catch(e){console.error('Erro ao renderizar o dashboard:',e)}if(btn.dataset.tab==='balance'){requestAnimationFrame(()=>{try{renderBalance()}catch(e){console.error('Erro ao renderizar Balanço:',e)}setTimeout(()=>{try{renderBalance()}catch(e){console.error('Erro ao renderizar Balanço:',e)}},50)})}}));
 function resetFiltersToDefault(){
@@ -1186,6 +1250,7 @@ async function startDashboard(){
 }
 [5,4,3,2,1].forEach(s=>qs('rating'+s)?.addEventListener('input',updateRatingPreview));
 initMonthPickers();
+initChoicePickers();
 handlePasswordRecovery();
 startDashboard();
 
