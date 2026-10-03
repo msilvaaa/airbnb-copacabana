@@ -86,7 +86,10 @@ module.exports = async function handler(req, res) {
   if (isPublicRead) {
     try {
       const [rows, ratings] = await Promise.all([
-        sql`SELECT id, ano, mes, valor, tipo, categoria FROM public.airbnb_dashboard ORDER BY id ASC`,
+        sql`SELECT DISTINCT ON (ano, mes, tipo, COALESCE(categoria, ''))
+          id, ano, mes, valor, tipo, categoria
+          FROM public.airbnb_dashboard
+          ORDER BY ano ASC, mes ASC, tipo ASC, COALESCE(categoria, '') ASC, id DESC`,
         readRatingRows()
       ]);
       return setJson(res, 200, { rows: rows.concat(ratings), public: true });
