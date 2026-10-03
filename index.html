@@ -1266,32 +1266,28 @@ async function startDashboard(){
   // Primeiro desenha imediatamente com o último estado disponível.
   // Em janela privada, sem snapshot, usa a base embarcada e depois sincroniza
   // com o Neon em segundo plano. A tela não fica bloqueada esperando o banco.
-  const snap=loadCloudSnapshot();
-  if(snap?.overrides){
-    cloudOverrides=snap.overrides;
-    cloudReady=true;
-  }
-  DATA=loadMergedData();
-  years=getYears();
-  resetFiltersToDefault();
-  renderRating();
-  renderAll();
-
-  const previous=JSON.stringify(cloudOverrides||{});
+  // A fonte financeira é sempre o Neon compartilhado. Não usamos snapshot
+  // do localStorage para os valores financeiros, pois ele pode estar diferente
+  // entre dispositivos.
   try{
     await loadSharedDashboardData();
-    const latest=JSON.stringify(cloudOverrides||{});
     DATA=loadMergedData();
     years=getYears();
-    if(latest!==previous){
-      resetFiltersToDefault();
-      renderRating();
-      renderAll();
-    }
+    resetFiltersToDefault();
+    renderRating();
+    renderAll();
     saveCloudSnapshot();
   }catch(e){
     console.error('Dashboard startup sync error',e);
-    // Mantém a tela já carregada. O Neon não pode bloquear o dashboard.
+    // Se o Neon estiver temporariamente indisponível, mostra apenas a base
+    // embarcada; nunca usa dados financeiros antigos específicos do dispositivo.
+    cloudOverrides={};
+    cloudReady=false;
+    DATA=loadMergedData();
+    years=getYears();
+    resetFiltersToDefault();
+    renderRating();
+    renderAll();
   }
 }
 [5,4,3,2,1].forEach(s=>qs('rating'+s)?.addEventListener('input',updateRatingPreview));
