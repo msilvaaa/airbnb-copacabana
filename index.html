@@ -639,7 +639,7 @@ async function saveRating(c){
     throw new Error('Sessão do Neon não está ativa neste dispositivo. Entre novamente.');
   }
   try{
-    const payload=await liveRatingRequest('POST',{ratingCounts:{5:Number(c[5]),4:Number(c[4]),3:Number(c[3]),2:Number(c[2]),1:Number(c[1])}});
+    const payload=await liveRatingRequest('POST',{5:Number(c[5]),4:Number(c[4]),3:Number(c[3]),2:Number(c[2]),1:Number(c[1])});
     if(!payload?.ok) throw new Error(payload?.error||'Neon não confirmou o salvamento da nota.');
     cloudOverrides=cloudOverrides||{};
     cloudOverrides.rating={
