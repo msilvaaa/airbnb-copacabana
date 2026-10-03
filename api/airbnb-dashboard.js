@@ -104,10 +104,11 @@ module.exports = async function handler(req, res) {
   try {
     if (req.method === "GET") {
       const rows = await sql`
-        SELECT id, ano, mes, valor, tipo, categoria
+        SELECT DISTINCT ON (ano, mes, tipo, COALESCE(categoria, ''))
+          id, ano, mes, valor, tipo, categoria
         FROM public.airbnb_dashboard
         WHERE user_id = ${user.id}::uuid
-        ORDER BY id ASC
+        ORDER BY ano ASC, mes ASC, tipo ASC, COALESCE(categoria, '') ASC, id DESC
       `;
       const ratings = await readRatingRows();
       let editorState = null;
