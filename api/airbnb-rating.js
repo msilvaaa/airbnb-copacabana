@@ -64,9 +64,11 @@ async function ensureRatingTable() {
 function parseRatingCookie(req){
   try{
     const raw=String(req.headers.cookie||'');
-    const match=raw.match(/(?:^|;\\s*)airbnb_rating=([^;]+)/);
-    if(!match) return null;
-    const data=JSON.parse(decodeURIComponent(match[1]));
+    const parts=raw.split(';');
+    const part=parts.find(p=>p.trim().startsWith('airbnb_rating='));
+    if(!part) return null;
+    const encoded=part.trim().slice('airbnb_rating='.length);
+    const data=JSON.parse(decodeURIComponent(encoded));
     if(!data || [5,4,3,2,1].some(s=>!Number.isInteger(Number(data[s]))||Number(data[s])<0)) return null;
     if([5,4,3,2,1].reduce((a,s)=>a+Number(data[s]),0)<=0) return null;
     return {5:Number(data[5]),4:Number(data[4]),3:Number(data[3]),2:Number(data[2]),1:Number(data[1])};
