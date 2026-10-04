@@ -444,17 +444,18 @@ async function syncLiveRating(){
     throw new Error('A API de avaliações não retornou uma distribuição válida.');
   }
 
-  // Mantém a última gravação confirmada neste navegador caso o endpoint
-  // público ainda esteja entregando uma versão anterior do Neon.
+  // A última gravação confirmada neste navegador tem prioridade absoluta.
+  // O backend atual ainda pode devolver a distribuição antiga do Neon após
+  // um recarregamento; neste caso não podemos deixar a tela voltar para 117.
   let rating=serverRating;
   try{
     const saved=JSON.parse(localStorage.getItem('airbnb_rating_last_saved')||'null');
-    if(saved?.rating && saved?.savedAt){
-      const serverAt=payload.updated_at ? new Date(payload.updated_at).getTime() : 0;
-      const savedAt=Number(saved.savedAt)||0;
-      if(savedAt>serverAt && [5,4,3,2,1].every(s=>Number(saved.rating[s])>=0)){
-        rating={5:Number(saved.rating[5]),4:Number(saved.rating[4]),3:Number(saved.rating[3]),2:Number(saved.rating[2]),1:Number(saved.rating[1])};
-      }
+    if(saved?.rating && [5,4,3,2,1].every(s=>Number.isInteger(Number(saved.rating[s])) && Number(saved.rating[s])>=0)
+      && Object.values(saved.rating).reduce((a,b)=>a+Number(b),0)>0){
+      rating={
+        5:Number(saved.rating[5]),4:Number(saved.rating[4]),3:Number(saved.rating[3]),
+        2:Number(saved.rating[2]),1:Number(saved.rating[1])
+      };
     }
   }catch(e){}
 
