@@ -61,6 +61,21 @@ async function ensureRatingTable() {
     ON CONFLICT (id) DO NOTHING
   `;
 }
+function parseRatingCookie(req){
+  try{
+    const raw=String(req.headers.cookie||'');
+    const match=raw.match(/(?:^|;\\s*)airbnb_rating=([^;]+)/);
+    if(!match) return null;
+    const data=JSON.parse(decodeURIComponent(match[1]));
+    if(!data || [5,4,3,2,1].some(s=>!Number.isInteger(Number(data[s]))||Number(data[s])<0)) return null;
+    if([5,4,3,2,1].reduce((a,s)=>a+Number(data[s]),0)<=0) return null;
+    return {5:Number(data[5]),4:Number(data[4]),3:Number(data[3]),2:Number(data[2]),1:Number(data[1])};
+  }catch{return null;}
+}
+function setRatingCookie(res,rating){
+  const value=encodeURIComponent(JSON.stringify(rating));
+  res.setHeader('Set-Cookie',`airbnb_rating=${value}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`);
+}
 function setJson(res,status,payload){return res.status(status).json(payload)}
 module.exports=async function handler(req,res){
   res.setHeader("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
@@ -68,8 +83,12 @@ module.exports=async function handler(req,res){
   try{
     await ensureRatingTable();
     if(req.method==="GET"){
+      const cookieRating=parseRatingCookie(req);
       const rows=await sql`SELECT nota_5,nota_4,nota_3,nota_2,nota_1,updated_at FROM public.airbnb_rating_config WHERE id=1`;
       let row=rows[0]||{nota_5:114,nota_4:3,nota_3:0,nota_2:0,nota_1:0};
+      if(cookieRating){
+        row={nota_5:cookieRating[5],nota_4:cookieRating[4],nota_3:cookieRating[3],nota_2:cookieRating[2],nota_1:cookieRating[1],updated_at:row.updated_at||null};
+      }
       return setJson(res,200,{
         nota_5:Number(row.nota_5),nota_4:Number(row.nota_4),nota_3:Number(row.nota_3),
         nota_2:Number(row.nota_2),nota_1:Number(row.nota_1),
@@ -96,6 +115,7 @@ module.exports=async function handler(req,res){
         RETURNING nota_5,nota_4,nota_3,nota_2,nota_1,updated_at
       `;
       const row=rows[0];
+      setRatingCookie(res,{5:Number(row.nota_5),4:Number(row.nota_4),3:Number(row.nota_3),2:Number(row.nota_2),1:Number(row.nota_1)});
       return setJson(res,200,{ok:true,nota_5:Number(row.nota_5),nota_4:Number(row.nota_4),nota_3:Number(row.nota_3),nota_2:Number(row.nota_2),nota_1:Number(row.nota_1),updated_at:row.updated_at||null});
     }
     res.setHeader("Allow","GET, POST");
