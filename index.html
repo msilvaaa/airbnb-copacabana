@@ -586,7 +586,7 @@ function reviewsNeededForTarget(c,target){
   // Cada nova avaliação usada neste cálculo é de 5 estrelas.
   for(let n=1;n<=10000;n++){
     const avg=(basePoints+5*n)/(baseTotal+n);
-    if(Math.round((avg+Number.EPSILON)*100)/100>=target)return n;
+    if(Math.round((avg+1e-9)*100)/100>=target)return n;
   }
   return null;
 }
@@ -1271,6 +1271,9 @@ async function startDashboard(){
   // entre dispositivos.
   try{
     await loadSharedDashboardData();
+    // A nota vem da tabela centralizada do Neon; faz uma segunda leitura direta
+    // para garantir que a tela nunca fique presa ao valor de uma fonte antiga.
+    await syncLiveRating();
     DATA=loadMergedData();
     years=getYears();
     resetFiltersToDefault();
