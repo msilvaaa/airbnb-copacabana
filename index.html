@@ -1317,10 +1317,14 @@ async function startDashboard(){
     saveCloudSnapshot();
   }catch(e){
     console.error('Dashboard startup sync error',e);
-    // Se o Neon estiver temporariamente indisponível, mostra apenas a base
-    // embarcada; nunca usa dados financeiros antigos específicos do dispositivo.
-    cloudOverrides={};
-    cloudReady=false;
+    // Nunca apaga uma avaliação já recuperada/salva só porque outra parte
+    // do carregamento do dashboard falhou. Isso era capaz de fazer 118 voltar
+    // para a distribuição padrão de 117.
+    const preservedRating=(cloudOverrides&&cloudOverrides.rating&&typeof cloudOverrides.rating==='object')
+      ? cloudOverrides.rating
+      : null;
+    cloudOverrides=preservedRating?{rating:preservedRating}:{};
+    cloudReady=!!preservedRating;
     DATA=loadMergedData();
     years=getYears();
     resetFiltersToDefault();
