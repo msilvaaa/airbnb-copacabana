@@ -69,7 +69,10 @@ module.exports=async function handler(req,res){
     await ensureRatingTable();
     if(req.method==="GET"){
       const rows=await sql`SELECT nota_5,nota_4,nota_3,nota_2,nota_1,updated_at FROM public.airbnb_rating_config WHERE id=1`;
-      const row=rows[0]||{nota_5:114,nota_4:3,nota_3:0,nota_2:0,nota_1:0};
+      let row=rows[0]||{nota_5:114,nota_4:3,nota_3:0,nota_2:0,nota_1:0};
+      // A cópia global é lida pela API autenticada apenas quando existir.
+      // A tabela de configuração continua sendo a fonte principal.
+      
       return setJson(res,200,{
         nota_5:Number(row.nota_5),nota_4:Number(row.nota_4),nota_3:Number(row.nota_3),
         nota_2:Number(row.nota_2),nota_1:Number(row.nota_1),
@@ -96,6 +99,26 @@ module.exports=async function handler(req,res){
         RETURNING nota_5,nota_4,nota_3,nota_2,nota_1,updated_at
       `;
       const row=rows[0];
+      // Mantém uma segunda cópia persistente na tabela do dashboard.
+      // Isso permite recuperar a última gravação mesmo se houver qualquer
+      // divergência temporária na leitura da tabela de configuração.
+      const globalRows = [
+        [5, Number(row.nota_5)],[4, Number(row.nota_4)],[3, Number(row.nota_3)],
+        [2, Number(row.nota_2)],[1, Number(row.nota_1)]
+      ];
+      for (const [star,value] of globalRows) {
+        await sql`
+          DELETE FROM public.airbnb_dashboard
+          WHERE user_id = ${user.id}::uuid
+            AND ano = 2021 AND mes = 0
+            AND tipo = 'rating_global'
+            AND COALESCE(categoria,'') = ${String(star)}
+        `;
+        await sql`
+          INSERT INTO public.airbnb_dashboard (user_id,ano,mes,valor,tipo,categoria)
+          VALUES (${user.id}::uuid,2021,0,${value},'rating_global',${String(star)})
+        `;
+      }
       return setJson(res,200,{ok:true,nota_5:Number(row.nota_5),nota_4:Number(row.nota_4),nota_3:Number(row.nota_3),nota_2:Number(row.nota_2),nota_1:Number(row.nota_1),updated_at:row.updated_at||null});
     }
     res.setHeader("Allow","GET, POST");
