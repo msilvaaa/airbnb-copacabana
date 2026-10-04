@@ -435,20 +435,29 @@ async function loadSharedDashboardData(){
   return o;
 }
 async function syncLiveRating(){
-  // A avaliação usa exclusivamente a API própria de avaliações.
-  // Isso impede que uma leitura do dashboard financeiro reintroduza uma
-  // distribuição antiga depois que a nota foi salva.
   const payload=await liveRatingRequest('GET');
-  const rating={
-    5:Number(payload.nota_5),
-    4:Number(payload.nota_4),
-    3:Number(payload.nota_3),
-    2:Number(payload.nota_2),
-    1:Number(payload.nota_1)
+  const serverRating={
+    5:Number(payload.nota_5),4:Number(payload.nota_4),3:Number(payload.nota_3),
+    2:Number(payload.nota_2),1:Number(payload.nota_1)
   };
-  if([5,4,3,2,1].some(s=>!Number.isInteger(rating[s])||rating[s]<0) || Object.values(rating).reduce((a,b)=>a+b,0)<=0){
+  if([5,4,3,2,1].some(s=>!Number.isInteger(serverRating[s])||serverRating[s]<0) || Object.values(serverRating).reduce((a,b)=>a+b,0)<=0){
     throw new Error('A API de avaliações não retornou uma distribuição válida.');
   }
+
+  // Mantém a última gravação confirmada neste navegador caso o endpoint
+  // público ainda esteja entregando uma versão anterior do Neon.
+  let rating=serverRating;
+  try{
+    const saved=JSON.parse(localStorage.getItem('airbnb_rating_last_saved')||'null');
+    if(saved?.rating && saved?.savedAt){
+      const serverAt=payload.updated_at ? new Date(payload.updated_at).getTime() : 0;
+      const savedAt=Number(saved.savedAt)||0;
+      if(savedAt>serverAt && [5,4,3,2,1].every(s=>Number(saved.rating[s])>=0)){
+        rating={5:Number(saved.rating[5]),4:Number(saved.rating[4]),3:Number(saved.rating[3]),2:Number(saved.rating[2]),1:Number(saved.rating[1])};
+      }
+    }
+  }catch(e){}
+
   cloudOverrides=cloudOverrides||{};
   cloudOverrides.rating=rating;
   cloudReady=true;
@@ -665,6 +674,11 @@ async function saveRating(c){
     cloudOverrides=cloudOverrides||{};
     cloudOverrides.rating=rating;
     cloudReady=true;
+    try{
+      localStorage.setItem('airbnb_rating_last_saved',JSON.stringify({
+        rating, savedAt: persisted.updated_at ? new Date(persisted.updated_at).getTime() : Date.now()
+      }));
+    }catch(e){}
     saveCloudSnapshot();
     await saveEditorState({
       type:'rating',
