@@ -680,10 +680,6 @@ async function saveRating(c){
       }));
     }catch(e){}
     saveCloudSnapshot();
-    await saveEditorState({
-      type:'rating',
-      rating:{5:counts[5],4:counts[4],3:counts[3],2:counts[2],1:counts[1]}
-    });
     DATA=loadMergedData();
     years=getYears();
     return payload;
