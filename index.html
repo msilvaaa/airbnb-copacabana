@@ -435,11 +435,17 @@ async function loadSharedDashboardData(){
   return o;
 }
 async function syncLiveRating(){
-  const payload=await liveRatingRequest('GET');
-  const rating={
-    5:Number(payload.nota_5),4:Number(payload.nota_4),3:Number(payload.nota_3),
-    2:Number(payload.nota_2),1:Number(payload.nota_1)
-  };
+  // A nota usa a mesma API central que o dashboard já utiliza para leitura
+  // pública e gravação. Assim, não existem duas fontes Neon concorrentes.
+  const payload=await apiRequest('GET',undefined,true);
+  const rating={};
+  (payload.rows||[]).filter(r=>String(r.tipo)==='rating').forEach(row=>{
+    const s=String(row.categoria||'');
+    if(['5','4','3','2','1'].includes(s)) rating[s]=Number(row.valor);
+  });
+  if(Object.keys(rating).length<5){
+    throw new Error('A API central não retornou a distribuição completa das avaliações.');
+  }
   cloudOverrides=cloudOverrides||{};
   cloudOverrides.rating=rating;
   cloudReady=true;
@@ -639,13 +645,20 @@ async function saveRating(c){
     throw new Error('Sessão do Neon não está ativa neste dispositivo. Entre novamente.');
   }
   try{
-    const payload=await liveRatingRequest('POST',{5:Number(c[5]),4:Number(c[4]),3:Number(c[3]),2:Number(c[2]),1:Number(c[1])});
+    // Grava pela mesma API central usada pelo dashboard para leitura.
+    // O endpoint devolve os valores efetivamente persistidos no Neon.
+    const payload=await apiRequest('POST',{
+      ratingCounts:{5:Number(c[5]),4:Number(c[4]),3:Number(c[3]),2:Number(c[2]),1:Number(c[1])}
+    });
     if(!payload?.ok) throw new Error(payload?.error||'Neon não confirmou o salvamento da nota.');
+    const rating={};
+    (payload.rows||[]).filter(r=>String(r.tipo)==='rating').forEach(row=>{
+      const s=String(row.categoria||'');
+      if(['5','4','3','2','1'].includes(s)) rating[s]=Number(row.valor);
+    });
+    if(Object.keys(rating).length<5) throw new Error('Neon não devolveu a distribuição completa após o salvamento.');
     cloudOverrides=cloudOverrides||{};
-    cloudOverrides.rating={
-      5:Number(payload.nota_5),4:Number(payload.nota_4),3:Number(payload.nota_3),
-      2:Number(payload.nota_2),1:Number(payload.nota_1)
-    };
+    cloudOverrides.rating=rating;
     cloudReady=true;
     saveCloudSnapshot();
     await saveEditorState({
@@ -1164,18 +1177,10 @@ function syncEditValue(){const y=String(qs('editYear').value||''),m=Number(qs('e
 }
 qs('confirmAddValueBtn').addEventListener('click',()=>{const add=Number(qs('editAddValue').value||0),base=Number(qs('editValue').value||0);if(!Number.isFinite(add)||add<0){qs('saveState').textContent='Informe um valor válido para somar.';return}qs('editValue').value=(base+add).toFixed(2);qs('editAddValue').value='';qs('saveState').textContent='Valor somado. Confira o novo total e clique em Salvar.'});
 qs('saveEditBtn').addEventListener('click',async()=>{const t=qs('editType').value;if(t==='rating'){const c={};for(const s of [5,4,3,2,1]){const v=Number(qs('rating'+s).value);if(!Number.isInteger(v)||v<0){qs('saveState').textContent='Informe quantidades inteiras e não negativas.';return}c[s]=v;}if(c[5]+c[4]+c[3]+c[2]+c[1]===0){qs('saveState').textContent='Informe pelo menos uma avaliação.';return}qs('saveState').textContent='Salvando no Neon...';try{
-  const savedRating=await saveRating(c);
-  // Usa imediatamente a resposta confirmada pelo POST. Não faz GET aqui,
-  // pois uma leitura concorrente/cacheada poderia devolver a configuração anterior.
-  if(savedRating?.ok){
-    cloudOverrides=cloudOverrides||{};
-    cloudOverrides.rating={
-      5:Number(savedRating.nota_5),4:Number(savedRating.nota_4),3:Number(savedRating.nota_3),
-      2:Number(savedRating.nota_2),1:Number(savedRating.nota_1)
-    };
-    cloudReady=true;
-    saveCloudSnapshot();
-  }
+  await saveRating(c);
+  // Mantém exatamente os valores devolvidos pela gravação central.
+  cloudReady=true;
+  saveCloudSnapshot();
   DATA=loadMergedData();years=getYears();renderRating();setSelects();syncYearSelectorForView();syncMonthPickerUI();syncChoicePickerUI();renderAll();qs('saveState').textContent='Nota salva no Neon — disponível em todos os dispositivos.';
 }catch(e){console.error('Rating editor save error:',e);qs('saveState').textContent='Erro ao salvar no Neon: '+(e?.message||'falha desconhecida');}return;}const y=Number(qs('editYear').value),m=Number(qs('editMonth').value),baseValue=Number(qs('editValue').value),addValue=Number(qs('editAddValue').value||0),v=baseValue+addValue;if(!y||y<2021||m<0||m>11||!Number.isFinite(v)||v<0){qs('saveState').textContent='Preencha ano, mês e um valor válido.';return}qs('saveState').textContent='Salvando no Neon...';let ok;if(t==='fixedCategory'){const name=qs('editCategory').value;if(!name){qs('saveState').textContent='Selecione uma categoria.';return}ok=await saveCategoryOverride(y,m,name,v)}else ok=await setOverride(t,y,m,v);setSelects();qs('yearSelect').value=String(y);qs('monthStartSelect').value=String(m);renderAll();
 if(ok){
