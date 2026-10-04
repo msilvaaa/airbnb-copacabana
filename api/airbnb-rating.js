@@ -70,9 +70,25 @@ module.exports=async function handler(req,res){
     if(req.method==="GET"){
       const rows=await sql`SELECT nota_5,nota_4,nota_3,nota_2,nota_1,updated_at FROM public.airbnb_rating_config WHERE id=1`;
       let row=rows[0]||{nota_5:114,nota_4:3,nota_3:0,nota_2:0,nota_1:0};
-      // A cópia global é lida pela API autenticada apenas quando existir.
-      // A tabela de configuração continua sendo a fonte principal.
-      
+      // A cópia global contém a última gravação feita pelo editor.
+      // Se existir, ela passa a ser a fonte de leitura, evitando que uma
+      // versão antiga da tabela de configuração faça a nota voltar.
+      const backup = await sql`
+        SELECT categoria, valor
+        FROM public.airbnb_dashboard
+        WHERE ano=2021 AND mes=0 AND tipo='rating_global'
+        ORDER BY id DESC
+      `;
+      if(backup.length){
+        const latest={};
+        for(const item of backup){
+          const star=String(item.categoria||'');
+          if(['5','4','3','2','1'].includes(star) && latest[star]===undefined) latest[star]=Number(item.valor);
+        }
+        if(['5','4','3','2','1'].every(s=>latest[s]!==undefined)){
+          row={nota_5:latest['5'],nota_4:latest['4'],nota_3:latest['3'],nota_2:latest['2'],nota_1:latest['1'],updated_at:row.updated_at||null};
+        }
+      }
       return setJson(res,200,{
         nota_5:Number(row.nota_5),nota_4:Number(row.nota_4),nota_3:Number(row.nota_3),
         nota_2:Number(row.nota_2),nota_1:Number(row.nota_1),
