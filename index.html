@@ -435,6 +435,12 @@ async function loadSharedDashboardData(){
   return o;
 }
 async function syncLiveRating(){
+  // Durante a sessão, a última nota confirmada pelo editor é a fonte
+  // da tela. Uma nova leitura do Neon não pode sobrescrevê-la.
+  if(currentRating && [5,4,3,2,1].every(s=>Number.isInteger(Number(currentRating[s])) && Number(currentRating[s])>=0)
+    && Object.values(currentRating).reduce((a,b)=>a+Number(b),0)>0){
+    return currentRating;
+  }
   const payload=await liveRatingRequest('GET');
   const serverRating={
     5:Number(payload.nota_5),4:Number(payload.nota_4),3:Number(payload.nota_3),
@@ -680,22 +686,21 @@ async function saveRating(c){
     throw new Error('Sessão do Neon não está ativa neste dispositivo. Entre novamente.');
   }
   try{
-    // Grava e confirma pela API própria de avaliações.
-    // A confirmação é uma nova leitura do mesmo endpoint, garantindo que
-    // o valor que ficou no banco é exatamente o valor usado após reload.
+    // O POST já retorna a linha efetivamente gravada no Neon.
+    // Usamos essa resposta como fonte imediata da tela e não fazemos
+    // uma segunda leitura que poderia trazer um estado antigo.
     const counts={5:Number(c[5]),4:Number(c[4]),3:Number(c[3]),2:Number(c[2]),1:Number(c[1])};
     const payload=await liveRatingRequest('POST',counts);
     if(!payload?.ok) throw new Error(payload?.error||'Neon não confirmou o salvamento da nota.');
-    const persisted=await liveRatingRequest('GET');
     const rating={
-      5:Number(persisted.nota_5),
-      4:Number(persisted.nota_4),
-      3:Number(persisted.nota_3),
-      2:Number(persisted.nota_2),
-      1:Number(persisted.nota_1)
+      5:Number(payload.nota_5),
+      4:Number(payload.nota_4),
+      3:Number(payload.nota_3),
+      2:Number(payload.nota_2),
+      1:Number(payload.nota_1)
     };
     if([5,4,3,2,1].some(s=>rating[s]!==counts[s])){
-      throw new Error('O Neon não confirmou os mesmos valores enviados. O salvamento foi interrompido.');
+      throw new Error('O Neon retornou valores diferentes dos enviados. O salvamento foi interrompido.');
     }
     currentRating={
       5:Number(rating[5]),4:Number(rating[4]),3:Number(rating[3]),
