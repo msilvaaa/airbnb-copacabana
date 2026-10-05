@@ -87,7 +87,27 @@ module.exports=async function handler(req,res){
     if(req.method==="GET"){
       const cookieRating=parseRatingCookie(req);
       const rows=await sql`SELECT nota_5,nota_4,nota_3,nota_2,nota_1,updated_at FROM public.airbnb_rating_config WHERE id=1`;
-      let row=rows[0]||{nota_5:114,nota_4:3,nota_3:0,nota_2:0,nota_1:0};
+      let row=rows[0]||{nota_5:115,nota_4:3,nota_3:0,nota_2:0,nota_1:0};
+
+      // Migração do estado antigo que estava alimentando a tela principal
+      // com 123 avaliações / nota exibida 4,83. O editor já trabalha com
+      // 115 avaliações de 5 estrelas + 3 de 4 estrelas (118 no total).
+      // Fazemos a correção no próprio banco para que ela sobreviva a
+      // recarregamentos, outros dispositivos e limpeza do navegador.
+      const legacyTotal=[row.nota_5,row.nota_4,row.nota_3,row.nota_2,row.nota_1]
+        .reduce((a,v)=>a+Number(v||0),0);
+      const legacyPoints=5*Number(row.nota_5||0)+4*Number(row.nota_4||0)+3*Number(row.nota_3||0)+2*Number(row.nota_2||0)+Number(row.nota_1||0);
+      const legacyAverage=legacyTotal?legacyPoints/legacyTotal:null;
+      if(!cookieRating && legacyTotal===123 && legacyAverage!=null && Math.round(legacyAverage*100)/100===4.83){
+        const migrated=await sql`
+          UPDATE public.airbnb_rating_config
+          SET nota_5=115,nota_4=3,nota_3=0,nota_2=0,nota_1=0,updated_at=now()
+          WHERE id=1
+          RETURNING nota_5,nota_4,nota_3,nota_2,nota_1,updated_at
+        `;
+        if(migrated[0]) row=migrated[0];
+      }
+
       if(cookieRating){
         row={nota_5:cookieRating[5],nota_4:cookieRating[4],nota_3:cookieRating[3],nota_2:cookieRating[2],nota_1:cookieRating[1],updated_at:row.updated_at||null};
       }
