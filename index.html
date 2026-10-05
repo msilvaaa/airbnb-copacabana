@@ -448,14 +448,27 @@ async function syncLiveRating(){
   // O backend atual ainda pode devolver a distribuição antiga do Neon após
   // um recarregamento; neste caso não podemos deixar a tela voltar para 117.
   let rating=serverRating;
+  // 117/4,97 e 123/4,83 são estados antigos e nunca podem voltar para a tela principal.
+  const serverTotal=Object.values(serverRating).reduce((a,b)=>a+Number(b),0);
+  const serverPoints=5*serverRating[5]+4*serverRating[4]+3*serverRating[3]+2*serverRating[2]+serverRating[1];
+  const serverAverage=serverTotal?serverPoints/serverTotal:null;
+  const serverIsStale=(serverTotal===117 && serverAverage!=null && Math.round(serverAverage*100)/100===4.97)
+    || (serverTotal===123 && serverAverage!=null && Math.round(serverAverage*100)/100===4.83);
+  if(serverIsStale) rating={5:115,4:3,3:0,2:0,1:0};
   try{
     const saved=JSON.parse(localStorage.getItem('airbnb_rating_last_saved')||'null');
     if(saved?.rating && [5,4,3,2,1].every(s=>Number.isInteger(Number(saved.rating[s])) && Number(saved.rating[s])>=0)
       && Object.values(saved.rating).reduce((a,b)=>a+Number(b),0)>0){
-      rating={
+      const savedRating={
         5:Number(saved.rating[5]),4:Number(saved.rating[4]),3:Number(saved.rating[3]),
         2:Number(saved.rating[2]),1:Number(saved.rating[1])
       };
+      const savedTotal=Object.values(savedRating).reduce((a,b)=>a+Number(b),0);
+      const savedPoints=5*savedRating[5]+4*savedRating[4]+3*savedRating[3]+2*savedRating[2]+savedRating[1];
+      const savedAverage=savedTotal?savedPoints/savedTotal:null;
+      const savedIsStale=(savedTotal===117 && savedAverage!=null && Math.round(savedAverage*100)/100===4.97)
+        || (savedTotal===123 && savedAverage!=null && Math.round(savedAverage*100)/100===4.83);
+      if(!savedIsStale) rating=savedRating;
     }
   }catch(e){}
 
