@@ -459,10 +459,14 @@ async function syncLiveRating(){
     }
   }catch(e){}
 
+  currentRating={
+    5:Number(rating[5]),4:Number(rating[4]),3:Number(rating[3]),
+    2:Number(rating[2]),1:Number(rating[1])
+  };
   cloudOverrides=cloudOverrides||{};
-  cloudOverrides.rating=rating;
+  cloudOverrides.rating=currentRating;
   cloudReady=true;
-  return rating;
+  return currentRating;
 }
 async function loadCloudOverrides(allowPublic=false){
   if(!cloudUser && !allowPublic) return {};
@@ -567,6 +571,7 @@ function loadCloudSnapshot(){try{return JSON.parse(localStorage.getItem(CLOUD_SN
 function saveCloudSnapshot(){try{localStorage.setItem(CLOUD_SNAPSHOT_KEY,JSON.stringify({overrides:cloudOverrides,version:1}))}catch(e){}}
 const STORAGE_KEY='dashboard_financeiro_overrides_v4';
 const MONTHS=BASE_DATA.months;
+let currentRating=null;
 let DATA=loadMergedData(); let years=getYears();
 const COLORS={blue:'#2563eb',green:'#059669',orange:'#d97706',red:'#dc2626',lightRed:'#f87171',wine:'#7f1d1d',pink:'#ec4899',purple:'#7c3aed',sky:'#0ea5e9',violet:'#8b5cf6'};
 const qs=id=>document.getElementById(id);const fmt=v=>v==null?'—':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}).format(v);const pct=v=>v==null?'—':new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(v*100)+'%';const moneyK=v=>{if(v==null)return '';const a=Math.abs(v);if(a>=1e6)return 'R$ '+(v/1e6).toFixed(1)+' mi';if(a>=1000)return 'R$ '+(v/1000).toFixed(0)+' mil';return 'R$ '+Math.round(v)};
@@ -579,8 +584,15 @@ const normalizeCategoryName=n=>{const x=String(n||'').trim().toLowerCase().repla
 function loadMergedData(){const d=clone(BASE_DATA),o=loadOverrides();['revenue','fixed','maintenance','cleaning','financing'].forEach(t=>{d[t]=d[t]||{};Object.entries(o[t]||{}).filter(([y])=>y!=='2020').forEach(([y,vals])=>{if(!d[t][y])d[t][y]=Array(12).fill(null);Object.entries(vals||{}).forEach(([m,v])=>d[t][y][Number(m)]=v)})});d.fixedCategories=d.fixedCategories||{};Object.entries(d.cleaning||{}).forEach(([y,vals])=>{d.fixed[y]=d.fixed[y]||Array(12).fill(null);d.fixedCategories[y]=d.fixedCategories[y]||[];let cat=d.fixedCategories[y].find(x=>canonicalCategoryName(x.name)==='Taxa de limpeza');if(!cat){cat={name:'Taxa de limpeza',values:Array(12).fill(null)};d.fixedCategories[y].push(cat)};(vals||[]).forEach((v,i)=>{if(v!=null){cat.values[i]=v;d.fixed[y][i]=(d.fixed[y][i]??0)+v}})});Object.entries(o.fixedCategory||{}).forEach(([y,cats])=>{d.fixedCategories[y]=d.fixedCategories[y]||[];Object.entries(cats||{}).forEach(([rawName,vals])=>{const name=normalizeCategoryName(rawName);let c=d.fixedCategories[y].find(x=>normalizeCategoryName(x.name)===name);if(!c){c={name,values:Array(12).fill(null)};d.fixedCategories[y].push(c)};Object.entries(vals||{}).forEach(([m,v])=>{const i=Number(m);c.values[i]=(c.values[i]??0)+(v??0)})})});normalizeFixedCategories(d);d.years=yearsFrom(d);return d}
 const DEFAULT_RATING_COUNTS={5:114,4:3,3:0,2:0,1:0};
 function getRatingCounts(){
-  // Para a nota, o valor centralizado recebido do Neon tem prioridade,
-  // mesmo que a sessão dos demais dados ainda esteja sendo recuperada.
+  // Uma única fonte em memória para a tela principal e o editor.
+  // Isso impede que uma leitura antiga do Neon substitua a nota recém-editada.
+  if(currentRating && [5,4,3,2,1].every(s=>Number.isInteger(Number(currentRating[s])) && Number(currentRating[s])>=0)
+    && Object.values(currentRating).reduce((a,b)=>a+Number(b),0)>0){
+    return {
+      5:Number(currentRating[5]),4:Number(currentRating[4]),3:Number(currentRating[3]),
+      2:Number(currentRating[2]),1:Number(currentRating[1])
+    };
+  }
   const cloudRating=(cloudOverrides&&cloudOverrides.rating&&typeof cloudOverrides.rating==='object')
     ? cloudOverrides.rating
     : null;
@@ -672,8 +684,12 @@ async function saveRating(c){
     if([5,4,3,2,1].some(s=>rating[s]!==counts[s])){
       throw new Error('O Neon não confirmou os mesmos valores enviados. O salvamento foi interrompido.');
     }
+    currentRating={
+      5:Number(rating[5]),4:Number(rating[4]),3:Number(rating[3]),
+      2:Number(rating[2]),1:Number(rating[1])
+    };
     cloudOverrides=cloudOverrides||{};
-    cloudOverrides.rating=rating;
+    cloudOverrides.rating=currentRating;
     cloudReady=true;
     try{
       localStorage.setItem('airbnb_rating_last_saved',JSON.stringify({
@@ -689,7 +705,7 @@ async function saveRating(c){
     throw e;
   }
 }
-async function clearRating(){if(cloudUser){try{for(const s of [5,4,3,2,1]){await apiRequest('DELETE',{ano:2021,mes:0,tipo:'rating',categoria:String(s)});await apiRequest('DELETE',{ano:2021,mes:0,tipo:'fixedCategory',categoria:'__airbnb_rating_'+s});}await loadCloudOverrides(false);return true;}catch(e){console.error(e);return false;}}return false;}
+async function clearRating(){if(cloudUser){try{for(const s of [5,4,3,2,1]){await apiRequest('DELETE',{ano:2021,mes:0,tipo:'rating',categoria:String(s)});await apiRequest('DELETE',{ano:2021,mes:0,tipo:'fixedCategory',categoria:'__airbnb_rating_'+s});}await loadCloudOverrides(false);currentRating=null;try{localStorage.removeItem('airbnb_rating_last_saved')}catch(e){}renderRating();return true;}catch(e){console.error(e);return false;}}return false;}
 function getYears(){return yearsFrom(DATA)}
 async function setOverride(type,y,m,v){if(cloudReady&&cloudUser){try{await writeCloudRow(cloudUser,Number(y),Number(m),type,'',Number(v));await loadCloudOverrides();DATA=loadMergedData();years=getYears();return true}catch(e){console.error(e);return false}}const o=loadOverrides();o[type]=o[type]||{};o[type][String(y)]=o[type][String(y)]||{};o[type][String(y)][String(m)]=v;const ok=saveOverrides(o);DATA=loadMergedData();years=getYears();return ok}
 async function clearOverride(type,y,m){
@@ -1182,7 +1198,7 @@ async function clearCategoryOverride(y,m,name){
   const o=loadOverrides();aliases.forEach(n=>{if(o.fixedCategory?.[yr]?.[n]){delete o.fixedCategory[yr][n][String(m)];if(!Object.keys(o.fixedCategory[yr][n]).length)delete o.fixedCategory[yr][n];}});if(o.fixedCategory?.[yr]&&!Object.keys(o.fixedCategory[yr]).length)delete o.fixedCategory[yr];if(o.fixedCategory&&!Object.keys(o.fixedCategory).length)delete o.fixedCategory;saveOverrides(o);DATA=loadMergedData();years=getYears();return true;
 }
 function refreshCategorySelector(){const sel=qs('editCategory');if(!sel)return;const current=sel.value;sel.innerHTML=ensureCategoryNames().map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');if(ensureCategoryNames().includes(current))sel.value=current;}
-async function updateEditorMode(){const t=qs('editType').value,isCat=t==='fixedCategory',isFixed=t==='fixed',isRating=t==='rating';qs('editYearField').classList.toggle('hidden',isRating);qs('editMonthField').classList.toggle('hidden',isRating);qs('editAddValueField').classList.toggle('hidden',isRating);qs('editValueField').classList.toggle('hidden',isRating);qs('ratingField').classList.toggle('hidden',!isRating);qs('editAddValueField').classList.toggle('add-value-under-revenue',['revenue','maintenance','cleaning','financing'].includes(t));qs('editAddValueField').closest('.form-grid').classList.toggle('add-value-below',['revenue','maintenance','cleaning','financing'].includes(t));qs('categoryField').classList.toggle('hidden',!isCat);qs('editFixedTotalField').classList.toggle('hidden',!isFixed);refreshCategorySelector();if(isRating){qs('saveState').textContent='Lendo a nota atual...';try{const c=await syncLiveRating();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=c[s]);}catch(e){console.error('Rating live read error:',e);const c=getRatingCounts();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=c[s]);}updateRatingPreview();qs('saveState').textContent='Edite a quantidade de avaliações por estrela.';}else{syncEditValue();syncFixedTotalPreview();}}
+async function updateEditorMode(){const t=qs('editType').value,isCat=t==='fixedCategory',isFixed=t==='fixed',isRating=t==='rating';qs('editYearField').classList.toggle('hidden',isRating);qs('editMonthField').classList.toggle('hidden',isRating);qs('editAddValueField').classList.toggle('hidden',isRating);qs('editValueField').classList.toggle('hidden',isRating);qs('ratingField').classList.toggle('hidden',!isRating);qs('editAddValueField').classList.toggle('add-value-under-revenue',['revenue','maintenance','cleaning','financing'].includes(t));qs('editAddValueField').closest('.form-grid').classList.toggle('add-value-below',['revenue','maintenance','cleaning','financing'].includes(t));qs('categoryField').classList.toggle('hidden',!isCat);qs('editFixedTotalField').classList.toggle('hidden',!isFixed);refreshCategorySelector();if(isRating){qs('saveState').textContent='Lendo a nota atual...';try{const c=await syncLiveRating();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=c[s]);renderRating();}catch(e){console.error('Rating live read error:',e);const c=getRatingCounts();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=c[s]);renderRating();}updateRatingPreview();qs('saveState').textContent='Edite a quantidade de avaliações por estrela.';}else{syncEditValue();syncFixedTotalPreview();}}
 function syncFixedTotalPreview(){const y=Number(qs('editYear').value),m=Number(qs('editMonth').value);const names=['IPTU','Apartamento','Condomínio','Internet','Light','Naturgy'];let total=0,has=false;names.forEach(name=>{const v=categoryValue(y,m,name);if(v!=null&&Number.isFinite(Number(v))){total+=Number(v);has=true}});const cleaning=DATA.cleaning?.[String(y)]?.[m];if(cleaning!=null&&Number.isFinite(Number(cleaning))){total+=Number(cleaning);has=true}qs('editFixedTotalPreview').value=has?fmt(total):'R$ 0,00';}
 function syncEditValue(){const y=String(qs('editYear').value||''),m=Number(qs('editMonth').value),t=qs('editType').value,o=loadOverrides();
   if(t==='fixedCategory'){refreshCategorySelector();const name=qs('editCategory').value,saved=o.fixedCategory?.[y]?.[name]?.[String(m)],current=categoryValue(y,m,name);qs('editValue').value=saved??(current??'');qs('saveState').textContent=saved!=null?'Existe um lançamento manual salvo para esta categoria.':'Valor original / vazio.';return}
