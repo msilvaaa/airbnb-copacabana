@@ -612,6 +612,14 @@ function getRatingCounts(){
       2:Number(currentRating[2]),1:Number(currentRating[1])
     };
   }
+  let savedRating=null;
+  try{
+    const saved=JSON.parse(localStorage.getItem('airbnb_rating_last_saved')||'null');
+    if(saved?.rating && [5,4,3,2,1].every(s=>Number.isInteger(Number(saved.rating[s]))&&Number(saved.rating[s])>=0)
+      && Object.values(saved.rating).reduce((a,b)=>a+Number(b),0)>0){
+      savedRating={5:Number(saved.rating[5]),4:Number(saved.rating[4]),3:Number(saved.rating[3]),2:Number(saved.rating[2]),1:Number(saved.rating[1])};
+    }
+  }catch(e){}
   const cloudRating=(cloudOverrides&&cloudOverrides.rating&&typeof cloudOverrides.rating==='object')
     ? cloudOverrides.rating
     : null;
@@ -620,9 +628,11 @@ function getRatingCounts(){
     : {};
   const c={};
   [5,4,3,2,1].forEach(s=>{
-    const source=cloudRating&&Object.prototype.hasOwnProperty.call(cloudRating,String(s))
-      ? cloudRating[String(s)]
-      : (Object.prototype.hasOwnProperty.call(localRating,String(s)) ? localRating[String(s)] : DEFAULT_RATING_COUNTS[s]);
+    const source=savedRating&&Object.prototype.hasOwnProperty.call(savedRating,String(s))
+      ? savedRating[String(s)]
+      : (cloudRating&&Object.prototype.hasOwnProperty.call(cloudRating,String(s))
+        ? cloudRating[String(s)]
+        : (Object.prototype.hasOwnProperty.call(localRating,String(s)) ? localRating[String(s)] : DEFAULT_RATING_COUNTS[s]));
     c[s]=Number.isFinite(Number(source))?Number(source):DEFAULT_RATING_COUNTS[s];
   });
   return c;
@@ -1350,9 +1360,17 @@ async function startDashboard(){
     // Nunca apaga uma avaliação já recuperada/salva só porque outra parte
     // do carregamento do dashboard falhou. Isso era capaz de fazer 118 voltar
     // para a distribuição padrão de 117.
-    const preservedRating=(cloudOverrides&&cloudOverrides.rating&&typeof cloudOverrides.rating==='object')
-      ? cloudOverrides.rating
-      : null;
+    let preservedRating=null;
+    try{
+      const saved=JSON.parse(localStorage.getItem('airbnb_rating_last_saved')||'null');
+      if(saved?.rating && [5,4,3,2,1].every(s=>Number.isInteger(Number(saved.rating[s]))&&Number(saved.rating[s])>=0)
+        && Object.values(saved.rating).reduce((a,b)=>a+Number(b),0)>0){
+        preservedRating={5:Number(saved.rating[5]),4:Number(saved.rating[4]),3:Number(saved.rating[3]),2:Number(saved.rating[2]),1:Number(saved.rating[1])};
+      }
+    }catch(e){}
+    if(!preservedRating && cloudOverrides&&cloudOverrides.rating&&typeof cloudOverrides.rating==='object'){
+      preservedRating=cloudOverrides.rating;
+    }
     cloudOverrides=preservedRating?{rating:preservedRating}:{};
     cloudReady=!!preservedRating;
     DATA=loadMergedData();
