@@ -721,7 +721,7 @@ async function saveRating(c){
     cloudReady=true;
     try{
       localStorage.setItem('airbnb_rating_last_saved',JSON.stringify({
-        rating, savedAt: persisted.updated_at ? new Date(persisted.updated_at).getTime() : Date.now()
+        rating, savedAt: payload.updated_at ? new Date(payload.updated_at).getTime() : Date.now()
       }));
     }catch(e){}
     return payload;
