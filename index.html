@@ -534,7 +534,9 @@ async function writeCloudRow(user,ano,mes,tipo,categoria,valor){
   if(!payload?.row || Number(payload.row.valor)!==Number(valor)){
     throw new Error('Neon não confirmou o valor gravado.');
   }
-  return payload.row;
+  // O endpoint pode retornar dados adicionais além da linha gravada,
+  // como o novo total de custos fixos calculado no mesmo POST.
+  return payload;
 }
 async function saveCloudOverrides(o){
   if(!cloudUser) return false;
