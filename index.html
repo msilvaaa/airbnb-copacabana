@@ -1298,36 +1298,21 @@ async function saveCategoryOverride(y,m,name,v){
   if(!(await ensureEditorCloudSession())){console.error('Category save blocked: editor is not authenticated in Neon.');return false;}
   try{
     const year=Number(y),month=Number(m),value=Number(v);
-    // 1) Grava a categoria escolhida no Neon.
-    await writeCloudRow(cloudUser,year,month,'fixedCategory',name,value);
-
-    // 2) Recalcula o total de custos fixos do mesmo mês.
-    // A taxa de limpeza fica separada e não entra neste total.
-    // Isso mantém a tela Custos sincronizada com o valor editado.
+    // Uma única requisição ao Neon salva a categoria e recalcula o total de custos fixos.
+    const saved=await writeCloudRow(cloudUser,year,month,'fixedCategory',name,value);
     cloudOverrides=cloudOverrides||{};
     cloudOverrides.fixedCategory=cloudOverrides.fixedCategory||{};
     cloudOverrides.fixedCategory[String(year)]=cloudOverrides.fixedCategory[String(year)]||{};
     cloudOverrides.fixedCategory[String(year)][name]=cloudOverrides.fixedCategory[String(year)][name]||{};
     cloudOverrides.fixedCategory[String(year)][name][String(month)]=value;
 
-    const mergedBefore=loadMergedData();
-    const categories=mergedBefore.fixedCategories?.[String(year)]||[];
-    let fixedTotal=0;
-    let hasFixed=false;
-    categories.forEach(cat=>{
-      if(canonicalCategoryName(cat.name)==='Taxa de limpeza')return;
-      const x=cat.values?.[month];
-      if(x!=null&&Number.isFinite(Number(x))){fixedTotal+=Number(x);hasFixed=true;}
-    });
-    if(hasFixed){
-      await writeCloudRow(cloudUser,year,month,'fixed','',fixedTotal);
+    const fixedTotal=Number(saved?.fixedTotal);
+    if(Number.isFinite(fixedTotal)){
       cloudOverrides.fixed=cloudOverrides.fixed||{};
       cloudOverrides.fixed[String(year)]=cloudOverrides.fixed[String(year)]||{};
       cloudOverrides.fixed[String(year)][String(month)]=fixedTotal;
     }
 
-    // 3) A releitura é somente confirmação visual; não pode invalidar o POST confirmado.
-    try{await loadCloudOverrides(false);}catch(e){console.warn('Neon refresh after category save failed; keeping confirmed save:',e)}
     DATA=loadMergedData();
     years=getYears();
     return true;
