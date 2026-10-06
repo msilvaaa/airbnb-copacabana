@@ -634,19 +634,23 @@ function getRatingCounts(){
       savedRating={5:Number(saved.rating[5]),4:Number(saved.rating[4]),3:Number(saved.rating[3]),2:Number(saved.rating[2]),1:Number(saved.rating[1])};
     }
   }catch(e){}
-  const cloudRating=(cloudOverrides&&cloudOverrides.rating&&typeof cloudOverrides.rating==='object')
+  const cloudCandidate=(cloudOverrides&&cloudOverrides.rating&&typeof cloudOverrides.rating==='object')
     ? cloudOverrides.rating
     : null;
+  const cloudTotal=cloudCandidate?[5,4,3,2,1].reduce((a,s)=>a+Number(cloudCandidate[s]||0),0):0;
+  const cloudRating=cloudCandidate&&cloudTotal>0?cloudCandidate:null;
   const localRating=(legacyOverrides().rating&&typeof legacyOverrides().rating==='object')
     ? legacyOverrides().rating
     : {};
+  const localTotal=[5,4,3,2,1].reduce((a,s)=>a+Number(localRating[s]||0),0);
+  const usableLocalRating=localTotal>0?localRating:{};
   const c={};
   [5,4,3,2,1].forEach(s=>{
     const source=savedRating&&Object.prototype.hasOwnProperty.call(savedRating,String(s))
       ? savedRating[String(s)]
       : (cloudRating&&Object.prototype.hasOwnProperty.call(cloudRating,String(s))
         ? cloudRating[String(s)]
-        : (Object.prototype.hasOwnProperty.call(localRating,String(s)) ? localRating[String(s)] : DEFAULT_RATING_COUNTS[s]));
+        : (Object.prototype.hasOwnProperty.call(usableLocalRating,String(s)) ? usableLocalRating[String(s)] : DEFAULT_RATING_COUNTS[s]));
     c[s]=Number.isFinite(Number(source))?Number(source):DEFAULT_RATING_COUNTS[s];
   });
   return c;
