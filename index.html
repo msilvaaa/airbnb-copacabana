@@ -1427,7 +1427,6 @@ async function startDashboard(){
     // Reaplica os valores somente depois que os dados e as opções já existem.
     applyDashboardOpeningDefaults();
   }catch(e){
-  }catch(e){
     console.error('Dashboard startup sync error',e);
     // Nunca apaga uma avaliação já recuperada/salva só porque outra parte
     // do carregamento do dashboard falhou. Isso era capaz de fazer 118 voltar
