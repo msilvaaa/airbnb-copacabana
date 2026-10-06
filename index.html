@@ -1285,19 +1285,44 @@ async function saveCategoryOverride(y,m,name,v){
   name=canonicalCategoryName(name);
   if(!(await ensureEditorCloudSession())){console.error('Category save blocked: editor is not authenticated in Neon.');return false;}
   try{
-    // O POST já confirma a linha efetivamente gravada no Neon.
-    // Não deixamos uma falha de releitura apagar a confirmação do salvamento.
-    await writeCloudRow(cloudUser,Number(y),Number(m),'fixedCategory',name,Number(v));
-    try{await loadCloudOverrides(false);}catch(e){console.warn('Neon refresh after category save failed; keeping confirmed save:',e)}
+    const year=Number(y),month=Number(m),value=Number(v);
+    // 1) Grava a categoria escolhida no Neon.
+    await writeCloudRow(cloudUser,year,month,'fixedCategory',name,value);
+
+    // 2) Recalcula o total de custos fixos do mesmo mês.
+    // A taxa de limpeza fica separada e não entra neste total.
+    // Isso mantém a tela Custos sincronizada com o valor editado.
     cloudOverrides=cloudOverrides||{};
     cloudOverrides.fixedCategory=cloudOverrides.fixedCategory||{};
-    cloudOverrides.fixedCategory[String(y)]=cloudOverrides.fixedCategory[String(y)]||{};
-    cloudOverrides.fixedCategory[String(y)][name]=cloudOverrides.fixedCategory[String(y)][name]||{};
-    cloudOverrides.fixedCategory[String(y)][name][String(m)]=Number(v);
+    cloudOverrides.fixedCategory[String(year)]=cloudOverrides.fixedCategory[String(year)]||{};
+    cloudOverrides.fixedCategory[String(year)][name]=cloudOverrides.fixedCategory[String(year)][name]||{};
+    cloudOverrides.fixedCategory[String(year)][name][String(month)]=value;
+
+    const mergedBefore=loadMergedData();
+    const categories=mergedBefore.fixedCategories?.[String(year)]||[];
+    let fixedTotal=0;
+    let hasFixed=false;
+    categories.forEach(cat=>{
+      if(canonicalCategoryName(cat.name)==='Taxa de limpeza')return;
+      const x=cat.values?.[month];
+      if(x!=null&&Number.isFinite(Number(x))){fixedTotal+=Number(x);hasFixed=true;}
+    });
+    if(hasFixed){
+      await writeCloudRow(cloudUser,year,month,'fixed','',fixedTotal);
+      cloudOverrides.fixed=cloudOverrides.fixed||{};
+      cloudOverrides.fixed[String(year)]=cloudOverrides.fixed[String(year)]||{};
+      cloudOverrides.fixed[String(year)][String(month)]=fixedTotal;
+    }
+
+    // 3) A releitura é somente confirmação visual; não pode invalidar o POST confirmado.
+    try{await loadCloudOverrides(false);}catch(e){console.warn('Neon refresh after category save failed; keeping confirmed save:',e)}
     DATA=loadMergedData();
     years=getYears();
     return true;
-  }catch(e){console.error('Neon category save error:',e);return false}
+  }catch(e){
+    console.error('Neon category save error:',e);
+    return false;
+  }
 }
 async function clearCategoryOverride(y,m,name){
   const aliases=[name,'Internet','Claro','Claro / NET','Claro/NET','ClaroNet','NET','Internet','Vivo / Claro','Vivo/Claro','Claro / Vivo','Claro/Vivo'];
