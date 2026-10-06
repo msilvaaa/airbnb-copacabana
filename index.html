@@ -1409,6 +1409,19 @@ async function startDashboard(){
     renderRating();
     renderAll();
     saveCloudSnapshot();
+    // Estado inicial definitivo da tela principal.
+    // Reaplica os valores e a aparência depois de todo o carregamento assíncrono.
+    const applyInitialFilters=()=>{
+      qs('yearSelect').value='all';
+      qs('monthStartSelect').value='2021-00';
+      qs('monthEndSelect').value='2027-11';
+      qs('viewSelect').value='annual';
+      syncYearSelectorForView();
+      syncMonthPickerUI();
+      syncChoicePickerUI();
+    };
+    applyInitialFilters();
+    setTimeout(applyInitialFilters,300);
   }catch(e){
     console.error('Dashboard startup sync error',e);
     // Nunca apaga uma avaliação já recuperada/salva só porque outra parte
