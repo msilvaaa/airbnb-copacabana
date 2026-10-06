@@ -340,20 +340,23 @@ async function neonAuthRequest(path,options={}){
 let cloudOverrides={};
 let cloudReady=false;
 let cloudUser=null;
+let cloudAuthToken=null;
 let cloudEditorState=null;
 
 async function getAuthAccessToken(){
+  // Após o login, reutiliza o JWT da sessão atual.
+  // Isso evita que o botão Salvar fique preso esperando uma nova consulta de Auth.
+  if(cloudAuthToken) return cloudAuthToken;
   try{
-    // O editor não pode ficar indefinidamente preso em "Salvando no Neon..."
-    // se o cliente de autenticação demorar para devolver o JWT.
     const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('Tempo limite ao obter a sessão do Neon')),7000));
     const token=await Promise.race([
       (async()=>{
         const auth=await getNeonAuthTokenClient();
-        return await auth.getJWTToken() || null;
+        return await auth.getJWTToken(false) || null;
       })(),
       timeout
     ]);
+    if(token) cloudAuthToken=token;
     return token||null;
   }catch(e){
     console.error('Neon Auth JWT error:',e);
@@ -1231,7 +1234,7 @@ async function handlePasswordRecovery(){
 }
 async function logoutEditor(){
   try{await neonAuthRequest('sign-out',{method:'POST',body:JSON.stringify({})})}catch(e){console.error(e)}
-  cloudUser=null;cloudReady=false;qs('editModal').classList.remove('open');qs('loginModal').classList.remove('open');qs('loginPass').value='';qs('loginError').textContent='';
+  cloudUser=null;cloudAuthToken=null;cloudReady=false;qs('editModal').classList.remove('open');qs('loginModal').classList.remove('open');qs('loginPass').value='';qs('loginError').textContent='';
 }
 async function authenticateEditor(){
   const u=qs('loginUser').value.trim(),p=qs('loginPass').value;
@@ -1242,6 +1245,7 @@ async function authenticateEditor(){
     const user=session?.user||session?.session?.user;
     if(!user) throw new Error('Sessão não criada');
     cloudUser=user;
+    cloudAuthToken=session?.session?.token||session?.token||null;
     try{ await loadCloudOverrides(false); }catch(e){ console.error('Editor Neon load error:',e); }
     // Entrar no editor não pode alterar os números já exibidos na página.
     // A tela principal permanece exatamente no estado em que foi carregada.
@@ -1274,7 +1278,14 @@ async function authenticateEditor(){
 function refreshEditorSession(){
   return neonAuthRequest('get-session',{method:'GET'}).then(session=>{
     const user=session?.user||session?.session?.user;
-    if(user){cloudUser=user;cloudReady=false;updateLoggedUser();return true}
+    if(user){
+      cloudUser=user;
+      cloudAuthToken=session?.session?.token||session?.token||cloudAuthToken||null;
+      cloudReady=false;
+      updateLoggedUser();
+      return true;
+    }
+    cloudAuthToken=null;
     return false;
   }).catch(()=>false);
 }
