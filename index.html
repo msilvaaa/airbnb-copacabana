@@ -762,7 +762,9 @@ async function setOverride(type,y,m,v){
   if(!(await ensureEditorCloudSession())){console.error('Save blocked: editor is not authenticated in Neon.');return false;}
   try{
     await writeCloudRow(cloudUser,Number(y),Number(m),type,'',Number(v));
-    await loadCloudOverrides(false);
+    // O POST confirmou a gravação. Uma falha na releitura não pode transformar
+    // um salvamento já confirmado em "falha".
+    try{await loadCloudOverrides(false);}catch(e){console.warn('Neon refresh after save failed; keeping confirmed save:',e)}
     DATA=loadMergedData();years=getYears();return true;
   }catch(e){console.error('Neon save error:',e);return false}
 }
@@ -1275,9 +1277,18 @@ async function saveCategoryOverride(y,m,name,v){
   name=canonicalCategoryName(name);
   if(!(await ensureEditorCloudSession())){console.error('Category save blocked: editor is not authenticated in Neon.');return false;}
   try{
+    // O POST já confirma a linha efetivamente gravada no Neon.
+    // Não deixamos uma falha de releitura apagar a confirmação do salvamento.
     await writeCloudRow(cloudUser,Number(y),Number(m),'fixedCategory',name,Number(v));
-    await loadCloudOverrides(false);
-    DATA=loadMergedData();years=getYears();return true;
+    try{await loadCloudOverrides(false);}catch(e){console.warn('Neon refresh after category save failed; keeping confirmed save:',e)}
+    cloudOverrides=cloudOverrides||{};
+    cloudOverrides.fixedCategory=cloudOverrides.fixedCategory||{};
+    cloudOverrides.fixedCategory[String(y)]=cloudOverrides.fixedCategory[String(y)]||{};
+    cloudOverrides.fixedCategory[String(y)][name]=cloudOverrides.fixedCategory[String(y)][name]||{};
+    cloudOverrides.fixedCategory[String(y)][name][String(m)]=Number(v);
+    DATA=loadMergedData();
+    years=getYears();
+    return true;
   }catch(e){console.error('Neon category save error:',e);return false}
 }
 async function clearCategoryOverride(y,m,name){
