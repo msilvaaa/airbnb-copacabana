@@ -735,7 +735,7 @@ async function saveRating(c){
 }
 async function clearRating(){if(cloudUser){try{for(const s of [5,4,3,2,1]){await apiRequest('DELETE',{ano:2021,mes:0,tipo:'rating',categoria:String(s)});await apiRequest('DELETE',{ano:2021,mes:0,tipo:'fixedCategory',categoria:'__airbnb_rating_'+s});}await loadCloudOverrides(false);currentRating=null;try{localStorage.removeItem('airbnb_rating_last_saved')}catch(e){}renderRating();return true;}catch(e){console.error(e);return false;}}return false;}
 function getYears(){return yearsFrom(DATA)}
-async async function ensureEditorCloudSession(){
+async function ensureEditorCloudSession(){
   if(cloudUser){
     if(!cloudReady){try{await loadCloudOverrides(false);}catch(e){console.error('Neon session refresh error:',e);return false;}}
     return true;
