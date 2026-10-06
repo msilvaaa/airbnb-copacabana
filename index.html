@@ -929,7 +929,9 @@ function setSelects(){
   const currentEditMonth=qs('editMonth')?.value;
   const currentEditYear=qs('editYear')?.value;
   qs('yearSelect').innerHTML='<option value="all">Todos os anos</option>'+years.map(v=>'<option value="'+v+'">'+v+'</option>').join('');
-  qs('yearSelect').value=years.includes(currentYear)?currentYear:(years.includes('2026')?'2026':years[years.length-1]);
+  // Na primeira abertura, o padrão é sempre Todos os anos.
+  // Depois que o usuário já estiver usando o dashboard, preserva a seleção atual.
+  qs('yearSelect').value=currentYear && years.includes(currentYear)?currentYear:'all';
   const dates=years.flatMap(y=>Array.from({length:12},(_,m)=>({year:String(y),month:m,key:String(y)+'-'+String(m).padStart(2,'0')})));
   const displayDates=[...dates].reverse();
   const opts=displayDates.map(d=>'<option value="'+d.key+'">'+MONTHS[d.month]+'/'+d.year+'</option>').join('');
