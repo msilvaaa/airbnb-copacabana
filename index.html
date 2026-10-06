@@ -1436,6 +1436,23 @@ async function startDashboard(){
 initMonthPickers();
 initChoicePickers();
 handlePasswordRecovery();
+
+// A nota precisa aparecer imediatamente, mesmo enquanto o Neon está sendo consultado.
+// O valor confirmado pelo Neon/localStorage será aplicado logo depois.
+(function initializeRatingDisplay(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('airbnb_rating_last_saved')||'null');
+    if(saved?.rating){
+      const candidate={5:Number(saved.rating[5]),4:Number(saved.rating[4]),3:Number(saved.rating[3]),2:Number(saved.rating[2]),1:Number(saved.rating[1])};
+      const total=[5,4,3,2,1].reduce((a,s)=>a+(Number.isFinite(candidate[s])?candidate[s]:0),0);
+      if(total>0){
+        currentRating=candidate;
+      }
+    }
+  }catch(e){}
+  if(!currentRating) currentRating={...DEFAULT_RATING_COUNTS};
+  renderRating();
+})();
 startDashboard();
 
 /* A tela fica estável depois do carregamento inicial.
