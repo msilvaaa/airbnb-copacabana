@@ -57,7 +57,7 @@ async function ensureRatingTable() {
   await sql`
     INSERT INTO public.airbnb_rating_config
       (id, nota_5, nota_4, nota_3, nota_2, nota_1)
-    VALUES (1, 114, 3, 0, 0, 0)
+    VALUES (1, 115, 3, 0, 0, 0)
     ON CONFLICT (id) DO NOTHING
   `;
 }
