@@ -564,8 +564,8 @@ async function refreshCloudData(){
     if(cloudUser){
       const session=await neonAuthRequest('get-session',{method:'GET'});
       const user=session?.user||session?.session?.user;
-      if(!user){cloudUser=null;}
-      else{cloudUser=user;await loadCloudOverrides(false);}
+      if(!user){cloudUser=null;cloudAuthToken=null;}
+      else{cloudUser=user;cloudAuthToken=session?.session?.token||session?.token||cloudAuthToken||null;await loadCloudOverrides(false);}
     }else{
       await loadCloudOverrides(true);
     }
@@ -587,6 +587,7 @@ async function initCloud(){
     const user=session?.user||session?.session?.user;
     if(user){
       cloudUser=user;
+      cloudAuthToken=session?.session?.token||session?.token||cloudAuthToken||null;
       await migrateLegacyIfNeeded();
       await loadCloudOverrides();
       DATA=loadMergedData();
