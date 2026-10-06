@@ -40,6 +40,20 @@ function setJson(res, status, payload) {
   return res.status(status).json(payload);
 }
 
+async function ensureDashboardTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS public.airbnb_dashboard (
+      id bigserial PRIMARY KEY,
+      user_id uuid NOT NULL,
+      ano integer NOT NULL,
+      mes integer NOT NULL,
+      valor numeric NOT NULL,
+      tipo text NOT NULL,
+      categoria text NOT NULL DEFAULT ''
+    )
+  `;
+}
+
 async function ensureRatingTable() {
   // Faz a migração de forma idempotente: se a tabela ainda não estiver
   // no banco conectado pela Vercel, cria a estrutura necessária.
@@ -80,6 +94,14 @@ module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
   if (!sql) return setJson(res, 503, { error: "Neon is not configured" });
+
+  try {
+    await ensureDashboardTable();
+    await ensureRatingTable();
+  } catch (error) {
+    console.error("Neon schema initialization error:", error);
+    return setJson(res, 500, { error: error?.message || "Neon schema initialization failed" });
+  }
 
   const isPublicRead = req.method === "GET" && (req.query?.public === "1" || req.query?.public === "true");
 
