@@ -1403,6 +1403,9 @@ function applyDashboardOpeningDefaults(){
   syncYearSelectorForView();
   syncMonthPickerUI();
   syncChoicePickerUI();
+  // Depois de aplicar os quatro valores de abertura, redesenha os gráficos.
+  // Assim o conteúdo visual nunca fica com a visão anterior (Anual).
+  renderAll();
 }
 
 function resetFiltersToDefault(){
