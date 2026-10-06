@@ -203,12 +203,12 @@ module.exports = async function handler(req, res) {
             AND mes = ${mes}
             AND tipo = 'fixedCategory'
             AND COALESCE(categoria, '') = ${categoria}
-        \`;
+        `;
         const categoryRows = await sql`
           INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
           VALUES (${user.id}::uuid, ${ano}, ${mes}, ${valor}, 'fixedCategory', ${categoria})
           RETURNING id, ano, mes, valor, tipo, categoria
-        \`;
+        `;
         return setJson(res, 200, { row: categoryRows[0] || null });
       }
       const rows = await sql`
