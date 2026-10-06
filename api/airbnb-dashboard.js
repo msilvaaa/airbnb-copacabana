@@ -196,7 +196,7 @@ module.exports = async function handler(req, res) {
       if (tipo === 'fixedCategory') {
         // Salva somente a categoria. O total de custos fixos é calculado no
         // cliente preservando todos os demais componentes do mês.
-        await sql\`
+        await sql`
           DELETE FROM public.airbnb_dashboard
           WHERE user_id = ${user.id}::uuid
             AND ano = ${ano}
@@ -204,7 +204,7 @@ module.exports = async function handler(req, res) {
             AND tipo = 'fixedCategory'
             AND COALESCE(categoria, '') = ${categoria}
         \`;
-        const categoryRows = await sql\`
+        const categoryRows = await sql`
           INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
           VALUES (${user.id}::uuid, ${ano}, ${mes}, ${valor}, 'fixedCategory', ${categoria})
           RETURNING id, ano, mes, valor, tipo, categoria
