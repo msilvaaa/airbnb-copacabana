@@ -627,22 +627,27 @@ function normalizeFixedCategories(d){const out={};Object.entries(d.fixedCategori
 const normalizeCategoryName=n=>{const x=String(n||'').trim().toLowerCase().replace(/\s+/g,'');if(['claro','claro/net','claronet','net','vivo','vivo/claro','claro/vivo','internet'].includes(x))return 'Internet';if(['limpeza','taxadelimpeza'].includes(x))return 'Taxa de limpeza';return String(n||'').trim()};
 function loadMergedData(){const d=clone(BASE_DATA),o=loadOverrides();['revenue','fixed','maintenance','cleaning','financing'].forEach(t=>{d[t]=d[t]||{};Object.entries(o[t]||{}).filter(([y])=>y!=='2020').forEach(([y,vals])=>{if(!d[t][y])d[t][y]=Array(12).fill(null);Object.entries(vals||{}).forEach(([m,v])=>d[t][y][Number(m)]=v)})});d.fixedCategories=d.fixedCategories||{};Object.entries(d.cleaning||{}).forEach(([y,vals])=>{d.fixed[y]=d.fixed[y]||Array(12).fill(null);d.fixedCategories[y]=d.fixedCategories[y]||[];let cat=d.fixedCategories[y].find(x=>canonicalCategoryName(x.name)==='Taxa de limpeza');if(!cat){cat={name:'Taxa de limpeza',values:Array(12).fill(null)};d.fixedCategories[y].push(cat)};(vals||[]).forEach((v,i)=>{if(v!=null){cat.values[i]=v;d.fixed[y][i]=(d.fixed[y][i]??0)+v}})});const fixedCategoryOverrideYears=new Set();Object.entries(o.fixedCategory||{}).forEach(([y,cats])=>{fixedCategoryOverrideYears.add(String(y));d.fixedCategories[y]=d.fixedCategories[y]||[];Object.entries(cats||{}).forEach(([rawName,vals])=>{const name=normalizeCategoryName(rawName);let c=d.fixedCategories[y].find(x=>normalizeCategoryName(x.name)===name);if(!c){c={name,values:Array(12).fill(null)};d.fixedCategories[y].push(c)};Object.entries(vals||{}).forEach(([m,v])=>{const i=Number(m);c.values[i]=Number(v)})})});normalizeFixedCategories(d);
 
-// Quando uma categoria é editada, ela substitui o valor original daquela categoria
-// e o custo fixo do mês volta a ser a soma de todas as categorias existentes.
-// Internet (inclusive registros antigos como Vivo/Claro/NET) entra nessa soma.
-// A taxa de limpeza permanece separada e continua sendo adicionada em getMonthData.
+// Uma categoria editada altera o total fixo pela diferença entre o valor novo
+// e o valor original daquela categoria. Assim, os demais custos que já formam
+// o total mensal continuam preservados, mesmo quando uma categoria não possui
+// uma linha individual naquele mês. Internet/Vivo/Claro/NET usa a mesma chave.
 fixedCategoryOverrideYears.forEach(y=>{
-  const arr=d.fixedCategories[y]||[];
-  d.fixed[y]=d.fixed[y]||Array(12).fill(null);
-  for(let i=0;i<12;i++){
-    let total=0,has=false;
-    arr.forEach(cat=>{
-      if(canonicalCategoryName(cat.name)==='Taxa de limpeza')return;
-      const v=cat?.values?.[i];
-      if(v!=null&&Number.isFinite(Number(v))){total+=Number(v);has=true;}
+  const baseFixed=BASE_DATA.fixed?.[y]||[];
+  const baseCats=BASE_DATA.fixedCategories?.[y]||[];
+  d.fixed[y]=Array.from({length:12},(_,i)=>baseFixed[i]??null);
+  const cats=o.fixedCategory?.[y]||{};
+  Object.entries(cats).forEach(([rawName,vals])=>{
+    const name=normalizeCategoryName(rawName);
+    const baseCat=baseCats.find(cat=>normalizeCategoryName(cat.name)===name);
+    const baseValues=baseCat?.values||[];
+    Object.entries(vals||{}).forEach(([m,v])=>{
+      const i=Number(m),newValue=Number(v);
+      const originalValue=baseValues[i]!=null&&Number.isFinite(Number(baseValues[i]))?Number(baseValues[i]):0;
+      const currentTotal=d.fixed[y][i];
+      const startingTotal=currentTotal!=null&&Number.isFinite(Number(currentTotal))?Number(currentTotal):0;
+      d.fixed[y][i]=startingTotal+(newValue-originalValue);
     });
-    if(has)d.fixed[y][i]=total;
-  }
+  });
 });
 
 d.years=yearsFrom(d);return d}
