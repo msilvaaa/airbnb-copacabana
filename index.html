@@ -519,7 +519,11 @@ async function loadCloudOverrides(allowPublic=false){
 function legacyOverrides(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){return {}}}
 async function writeCloudRow(user,ano,mes,tipo,categoria,valor){
   if(!cloudUser) throw new Error('not_authenticated');
-  await apiRequest('POST',{ano,mes,valor,tipo,categoria:categoria||''});
+  const payload=await apiRequest('POST',{ano,mes,valor,tipo,categoria:categoria||''});
+  if(!payload?.row || Number(payload.row.valor)!==Number(valor)){
+    throw new Error('Neon não confirmou o valor gravado.');
+  }
+  return payload.row;
 }
 async function saveCloudOverrides(o){
   if(!cloudUser) return false;
@@ -595,7 +599,14 @@ let DATA=loadMergedData(); let years=getYears();
 const COLORS={blue:'#2563eb',green:'#059669',orange:'#d97706',red:'#dc2626',lightRed:'#f87171',wine:'#7f1d1d',pink:'#ec4899',purple:'#7c3aed',sky:'#0ea5e9',violet:'#8b5cf6'};
 const qs=id=>document.getElementById(id);const fmt=v=>v==null?'—':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2}).format(v);const pct=v=>v==null?'—':new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(v*100)+'%';const moneyK=v=>{if(v==null)return '';const a=Math.abs(v);if(a>=1e6)return 'R$ '+(v/1e6).toFixed(1)+' mi';if(a>=1000)return 'R$ '+(v/1000).toFixed(0)+' mil';return 'R$ '+Math.round(v)};
 function clone(o){return JSON.parse(JSON.stringify(o))}function sumArr(a){const v=(a||[]).filter(x=>x!=null);return v.length?v.reduce((s,x)=>s+x,0):null}
-function loadOverrides(){return cloudReady?cloudOverrides:legacyOverrides()}function saveOverrides(o){if(cloudReady){cloudOverrides=o;return true}try{localStorage.setItem(STORAGE_KEY,JSON.stringify(o));return true}catch(e){return false}}
+function loadOverrides(){return cloudReady?cloudOverrides:legacyOverrides()}function saveOverrides(o){
+  // Dados editados pelo usuário nunca são considerados salvos apenas no navegador.
+  // A persistência oficial é exclusivamente o Neon.
+  if(!cloudUser)return false;
+  cloudOverrides=o;
+  cloudReady=true;
+  return true;
+}
 function yearsFrom(d){return [...new Set([...(d.years||[]).map(String),...Object.keys(d.revenue||{}),...Object.keys(d.fixed||{}),...Object.keys(d.maintenance||{}),...Object.keys(d.cleaning||{}),...Object.keys(d.financing||{})])].filter(y=>y!=='2020').sort((a,b)=>Number(a)-Number(b))}
 function canonicalCategoryName(name){const n=String(name||'').trim().replace(/\s+/g,' ').toLowerCase();if(['claro','claro / net','claro/net','claronet','net','vivo','vivo / claro','vivo/claro','claro / vivo','claro/vivo','internet'].includes(n))return 'Internet';return String(name||'').trim()}
 function normalizeFixedCategories(d){const out={};Object.entries(d.fixedCategories||{}).forEach(([y,arr])=>{const merged=[];(arr||[]).forEach(c=>{const name=canonicalCategoryName(c.name);let target=merged.find(x=>x.name===name);if(!target){target={name,values:Array(12).fill(null)};merged.push(target)};(c.values||[]).forEach((v,i)=>{if(v!=null){target.values[i]=(target.values[i]==null?0:target.values[i])+v}})});out[y]=merged});d.fixedCategories=out;return d}
@@ -753,24 +764,20 @@ async function setOverride(type,y,m,v){
   }catch(e){console.error('Neon save error:',e);return false}
 }
 async function clearOverride(type,y,m){
-  if(cloudReady&&cloudUser){
-    try{
-      await apiRequest('DELETE',{ano:Number(y),mes:Number(m),tipo,categoria:''});
-      await loadCloudOverrides();DATA=loadMergedData();years=getYears();return true;
-    }catch(error){console.error(error);return false}
-  }
-  const o=loadOverrides();if(o[type]?.[String(y)]){delete o[type][String(y)][String(m)];if(!Object.keys(o[type][String(y)]).length)delete o[type][String(y)]}
-  saveOverrides(o);DATA=loadMergedData();years=getYears();return true
+  if(!(await ensureEditorCloudSession())){console.error('Clear blocked: editor is not authenticated in Neon.');return false;}
+  try{
+    await apiRequest('DELETE',{ano:Number(y),mes:Number(m),tipo,categoria:''});
+    await loadCloudOverrides(false);
+    DATA=loadMergedData();years=getYears();return true;
+  }catch(error){console.error(error);return false}
 }
 async function resetOverrides(){
-  if(cloudReady&&cloudUser){
-    try{
-      await apiRequest('DELETE',{all:true});
-      cloudOverrides={};DATA=loadMergedData();years=getYears();return true;
-    }catch(error){console.error(error);return false}
-  }
-  try{localStorage.removeItem(STORAGE_KEY)}catch(e){}
-  DATA=loadMergedData();years=getYears();return true
+  if(!(await ensureEditorCloudSession())){console.error('Reset blocked: editor is not authenticated in Neon.');return false;}
+  try{
+    await apiRequest('DELETE',{all:true});
+    await loadCloudOverrides(false);
+    DATA=loadMergedData();years=getYears();return true;
+  }catch(error){console.error(error);return false}
 }
 function getMonthData(y,i){y=String(y);const r=DATA.revenue[y]?.[i]??null,f=DATA.fixed[y]?.[i]??null,m=DATA.maintenance[y]?.[i]??null,cl=DATA.cleaning?.[y]?.[i]??null,fixedSemLimpeza=f==null?null:f-(cl??0),total=f==null?null:f+(m??0)+(cl??0),result=r==null||total==null?null:r-total;return {r,f,m,cl,fixedSemLimpeza,total,result,margin:r!=null&&result!=null&&r!==0?result/r:null}}
 function annualStats(y){const ys=y==='all'?years:[String(y)];let rev=0,fix=0,maint=0,balance=0,bn=0;ys.forEach(yr=>{for(let i=0;i<12;i++){const d=getMonthData(yr,i);if(d.r!=null)rev+=d.r;if(d.f!=null)fix+=d.f;if(d.m!=null)maint+=d.m;if(d.result!=null){balance+=d.result;bn++}}});return {rev,fix,maint,balance,margin:rev?balance/rev:null,bn}}
@@ -1241,14 +1248,13 @@ async function saveCategoryOverride(y,m,name,v){
   }catch(e){console.error('Neon category save error:',e);return false}
 }
 async function clearCategoryOverride(y,m,name){
-  const yr=String(y),aliases=[name,'Internet','Claro','Claro / NET','Claro/NET','ClaroNet','NET','Internet','Vivo / Claro','Vivo/Claro','Claro / Vivo','Claro/Vivo'];
-  if(cloudReady&&cloudUser){
-    try{
-      for(const n of aliases) await apiRequest('DELETE',{ano:Number(y),mes:Number(m),tipo:'fixedCategory',categoria:n});
-      await loadCloudOverrides();DATA=loadMergedData();years=getYears();return true;
-    }catch(e){console.error(e);return false}
-  }
-  const o=loadOverrides();aliases.forEach(n=>{if(o.fixedCategory?.[yr]?.[n]){delete o.fixedCategory[yr][n][String(m)];if(!Object.keys(o.fixedCategory[yr][n]).length)delete o.fixedCategory[yr][n];}});if(o.fixedCategory?.[yr]&&!Object.keys(o.fixedCategory[yr]).length)delete o.fixedCategory[yr];if(o.fixedCategory&&!Object.keys(o.fixedCategory).length)delete o.fixedCategory;saveOverrides(o);DATA=loadMergedData();years=getYears();return true;
+  const aliases=[name,'Internet','Claro','Claro / NET','Claro/NET','ClaroNet','NET','Internet','Vivo / Claro','Vivo/Claro','Claro / Vivo','Claro/Vivo'];
+  if(!(await ensureEditorCloudSession())){console.error('Category clear blocked: editor is not authenticated in Neon.');return false;}
+  try{
+    for(const n of aliases) await apiRequest('DELETE',{ano:Number(y),mes:Number(m),tipo:'fixedCategory',categoria:n});
+    await loadCloudOverrides(false);
+    DATA=loadMergedData();years=getYears();return true;
+  }catch(e){console.error(e);return false}
 }
 function refreshCategorySelector(){const sel=qs('editCategory');if(!sel)return;const current=sel.value;sel.innerHTML=ensureCategoryNames().map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');if(ensureCategoryNames().includes(current))sel.value=current;}
 async function updateEditorMode(){const t=qs('editType').value,isCat=t==='fixedCategory',isFixed=t==='fixed',isRating=t==='rating';qs('editYearField').classList.toggle('hidden',isRating);qs('editMonthField').classList.toggle('hidden',isRating);qs('editAddValueField').classList.toggle('hidden',isRating);qs('editValueField').classList.toggle('hidden',isRating);qs('ratingField').classList.toggle('hidden',!isRating);qs('editAddValueField').classList.toggle('add-value-under-revenue',['revenue','maintenance','cleaning','financing'].includes(t));qs('editAddValueField').closest('.form-grid').classList.toggle('add-value-below',['revenue','maintenance','cleaning','financing'].includes(t));qs('categoryField').classList.toggle('hidden',!isCat);qs('editFixedTotalField').classList.toggle('hidden',!isFixed);refreshCategorySelector();if(isRating){qs('saveState').textContent='Lendo a nota atual...';try{const c=await syncLiveRating();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=c[s]);renderRating();}catch(e){console.error('Rating live read error:',e);const c=getRatingCounts();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=c[s]);renderRating();}updateRatingPreview();qs('saveState').textContent='Edite a quantidade de avaliações por estrela.';}else{syncEditValue();syncFixedTotalPreview();}}
