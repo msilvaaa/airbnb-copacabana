@@ -431,7 +431,7 @@ async function loadSharedDashboardData(){
   // Do not replace a newer locally-known rating; dedicated rating endpoint
   // remains the authoritative source for that piece.
   cloudOverrides=o;
-  cloudReady=true;
+  cloudReady=!!cloudUser;
   return o;
 }
 async function syncLiveRating(){
@@ -735,7 +735,23 @@ async function saveRating(c){
 }
 async function clearRating(){if(cloudUser){try{for(const s of [5,4,3,2,1]){await apiRequest('DELETE',{ano:2021,mes:0,tipo:'rating',categoria:String(s)});await apiRequest('DELETE',{ano:2021,mes:0,tipo:'fixedCategory',categoria:'__airbnb_rating_'+s});}await loadCloudOverrides(false);currentRating=null;try{localStorage.removeItem('airbnb_rating_last_saved')}catch(e){}renderRating();return true;}catch(e){console.error(e);return false;}}return false;}
 function getYears(){return yearsFrom(DATA)}
-async function setOverride(type,y,m,v){if(cloudReady&&cloudUser){try{await writeCloudRow(cloudUser,Number(y),Number(m),type,'',Number(v));try{await loadCloudOverrides();}catch(e){console.warn('Neon refresh after save failed; keeping confirmed save:',e)}DATA=loadMergedData();years=getYears();return true}catch(e){console.error(e);return false}}const o=loadOverrides();o[type]=o[type]||{};o[type][String(y)]=o[type][String(y)]||{};o[type][String(y)][String(m)]=v;const ok=saveOverrides(o);DATA=loadMergedData();years=getYears();return ok}
+async async function ensureEditorCloudSession(){
+  if(cloudUser){
+    if(!cloudReady){try{await loadCloudOverrides(false);}catch(e){console.error('Neon session refresh error:',e);return false;}}
+    return true;
+  }
+  const ok=await refreshEditorSession();
+  if(!ok||!cloudUser)return false;
+  try{await loadCloudOverrides(false);return true;}catch(e){console.error('Neon session load error:',e);return false;}
+}
+async function setOverride(type,y,m,v){
+  if(!(await ensureEditorCloudSession())){console.error('Save blocked: editor is not authenticated in Neon.');return false;}
+  try{
+    await writeCloudRow(cloudUser,Number(y),Number(m),type,'',Number(v));
+    await loadCloudOverrides(false);
+    DATA=loadMergedData();years=getYears();return true;
+  }catch(e){console.error('Neon save error:',e);return false}
+}
 async function clearOverride(type,y,m){
   if(cloudReady&&cloudUser){
     try{
@@ -1176,6 +1192,7 @@ async function authenticateEditor(){
     const user=session?.user||session?.session?.user;
     if(!user) throw new Error('Sessão não criada');
     cloudUser=user;
+    try{ await loadCloudOverrides(false); }catch(e){ console.error('Editor Neon load error:',e); }
     // Entrar no editor não pode alterar os números já exibidos na página.
     // A tela principal permanece exatamente no estado em que foi carregada.
     updateLoggedUser();
@@ -1214,7 +1231,15 @@ function refreshEditorSession(){
 const FIXED_CATEGORY_NAMES=['IPTU','Apartamento','Condomínio','Internet','Light','Naturgy'];
 function ensureCategoryNames(){const names=[...FIXED_CATEGORY_NAMES];Object.values(DATA.fixedCategories||{}).forEach(arr=>(arr||[]).forEach(c=>{if(c?.name&&!names.includes(c.name))names.push(c.name)}));return names}
 function categoryValue(y,m,name){const c=(DATA.fixedCategories[String(y)]||[]).find(x=>x.name===name);return c?.values?.[Number(m)]??null}
-async function saveCategoryOverride(y,m,name,v){name=canonicalCategoryName(name);const o=loadOverrides();o.fixedCategory=o.fixedCategory||{};o.fixedCategory[String(y)]=o.fixedCategory[String(y)]||{};o.fixedCategory[String(y)][name]=o.fixedCategory[String(y)][name]||{};o.fixedCategory[String(y)][name][String(m)]=v;let ok=true;if(cloudReady&&cloudUser){try{await writeCloudRow(cloudUser,Number(y),Number(m),'fixedCategory',name,Number(v));try{await loadCloudOverrides();}catch(e){console.warn('Neon refresh after category save failed; keeping confirmed save:',e)}}catch(e){console.error('Neon category save error:',e);ok=false}}else ok=saveOverrides(o);if(ok&&cloudReady&&cloudUser){cloudOverrides=cloudOverrides||{};cloudOverrides.fixedCategory=cloudOverrides.fixedCategory||{};cloudOverrides.fixedCategory[String(y)]=cloudOverrides.fixedCategory[String(y)]||{};cloudOverrides.fixedCategory[String(y)][name]=cloudOverrides.fixedCategory[String(y)][name]||{};cloudOverrides.fixedCategory[String(y)][name][String(m)]=Number(v);}DATA=loadMergedData();years=getYears();return ok}
+async function saveCategoryOverride(y,m,name,v){
+  name=canonicalCategoryName(name);
+  if(!(await ensureEditorCloudSession())){console.error('Category save blocked: editor is not authenticated in Neon.');return false;}
+  try{
+    await writeCloudRow(cloudUser,Number(y),Number(m),'fixedCategory',name,Number(v));
+    await loadCloudOverrides(false);
+    DATA=loadMergedData();years=getYears();return true;
+  }catch(e){console.error('Neon category save error:',e);return false}
+}
 async function clearCategoryOverride(y,m,name){
   const yr=String(y),aliases=[name,'Internet','Claro','Claro / NET','Claro/NET','ClaroNet','NET','Internet','Vivo / Claro','Vivo/Claro','Claro / Vivo','Claro/Vivo'];
   if(cloudReady&&cloudUser){
