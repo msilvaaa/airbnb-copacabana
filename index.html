@@ -920,6 +920,10 @@ function setSelects(){
   const currentYear=qs('yearSelect').value;
   const currentStart=qs('monthStartSelect').value;
   const currentEnd=qs('monthEndSelect').value;
+  // Recriar os filtros não pode alterar o mês que o usuário está editando.
+  // O campo do editor é independente dos filtros principais.
+  const currentEditMonth=qs('editMonth')?.value;
+  const currentEditYear=qs('editYear')?.value;
   qs('yearSelect').innerHTML='<option value="all">Todos os anos</option>'+years.map(v=>'<option value="'+v+'">'+v+'</option>').join('');
   qs('yearSelect').value=years.includes(currentYear)?currentYear:(years.includes('2026')?'2026':years[years.length-1]);
   const dates=years.flatMap(y=>Array.from({length:12},(_,m)=>({year:String(y),month:m,key:String(y)+'-'+String(m).padStart(2,'0')})));
@@ -931,6 +935,14 @@ function setSelects(){
   if(qs('monthStartSelect').value>qs('monthEndSelect').value)qs('monthEndSelect').value=qs('monthStartSelect').value;
   const editOpts=MONTHS.map((m,i)=>'<option value="'+i+'">'+m+'</option>').join('');
   qs('editMonth').innerHTML=editOpts;
+  // Mantém exatamente o ano/mês selecionados no editor após salvar, apagar ou
+  // ocorrer qualquer erro. Nunca volta automaticamente para Janeiro.
+  if(currentEditMonth!=null && [...qs('editMonth').options].some(o=>o.value===currentEditMonth)){
+    qs('editMonth').value=currentEditMonth;
+  }
+  if(currentEditYear!=null && [...qs('editYear').options].some(o=>o.value===currentEditYear)){
+    qs('editYear').value=currentEditYear;
+  }
   syncYearSelectorForView();
   syncMonthPickerUI();
   syncChoicePickerUI();
