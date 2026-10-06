@@ -193,6 +193,55 @@ module.exports = async function handler(req, res) {
       if (!Number.isInteger(ano) || ano < 2021 || !Number.isInteger(mes) || mes < 0 || mes > 11 || !Number.isFinite(valor) || !tipo) {
         return setJson(res, 400, { error: "Invalid row" });
       }
+      if (tipo === 'fixedCategory') {
+        // Salva a categoria e recalcula o total de custos fixos do mês
+        // dentro da mesma requisição, evitando dois POSTs no navegador.
+        await sql`
+          DELETE FROM public.airbnb_dashboard
+          WHERE user_id = ${user.id}::uuid
+            AND ano = ${ano}
+            AND mes = ${mes}
+            AND tipo = 'fixedCategory'
+            AND COALESCE(categoria, '') = ${categoria}
+        `;
+        const categoryRows = await sql`
+          INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
+          VALUES (${user.id}::uuid, ${ano}, ${mes}, ${valor}, 'fixedCategory', ${categoria})
+          RETURNING id, ano, mes, valor, tipo, categoria
+        `;
+
+        const totalRows = await sql`
+          SELECT COALESCE(SUM(latest.valor), 0) AS total
+          FROM (
+            SELECT DISTINCT ON (COALESCE(categoria, '')) valor, categoria, id
+            FROM public.airbnb_dashboard
+            WHERE user_id = ${user.id}::uuid
+              AND ano = ${ano}
+              AND mes = ${mes}
+              AND tipo = 'fixedCategory'
+              AND COALESCE(categoria, '') NOT IN ('Taxa de limpeza', 'taxa de limpeza')
+              AND COALESCE(categoria, '') NOT LIKE '__airbnb_rating_%'
+            ORDER BY COALESCE(categoria, ''), id DESC
+          ) latest
+        `;
+        const fixedTotal = Number(totalRows[0]?.total || 0);
+
+        await sql`
+          DELETE FROM public.airbnb_dashboard
+          WHERE user_id = ${user.id}::uuid
+            AND ano = ${ano}
+            AND mes = ${mes}
+            AND tipo = 'fixed'
+            AND COALESCE(categoria, '') = ''
+        `;
+        await sql`
+          INSERT INTO public.airbnb_dashboard (user_id, ano, mes, valor, tipo, categoria)
+          VALUES (${user.id}::uuid, ${ano}, ${mes}, ${fixedTotal}, 'fixed', '')
+        `;
+
+        return setJson(res, 200, { row: categoryRows[0] || null, fixedTotal });
+      }
+
       const rows = await sql`
         WITH deleted AS (
           DELETE FROM public.airbnb_dashboard
