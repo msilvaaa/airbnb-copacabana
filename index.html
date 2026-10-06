@@ -1385,6 +1385,8 @@ function resetFiltersToDefault(){
   syncMonthPickerUI();
   syncChoicePickerUI();
   renderAll();
+  // Reforça apenas a aparência das quatro comboboxes após a renderização.
+  requestAnimationFrame(()=>{syncMonthPickerUI();syncChoicePickerUI()});
 }
 
 // Ao abrir/reabrir o site, aguarda a leitura do Neon antes de desenhar
