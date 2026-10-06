@@ -625,7 +625,25 @@ function yearsFrom(d){return [...new Set([...(d.years||[]).map(String),...Object
 function canonicalCategoryName(name){const n=String(name||'').trim().replace(/\s+/g,' ').toLowerCase();if(['claro','claro / net','claro/net','claronet','net','vivo','vivo / claro','vivo/claro','claro / vivo','claro/vivo','internet'].includes(n))return 'Internet';return String(name||'').trim()}
 function normalizeFixedCategories(d){const out={};Object.entries(d.fixedCategories||{}).forEach(([y,arr])=>{const merged=[];(arr||[]).forEach(c=>{const name=canonicalCategoryName(c.name);let target=merged.find(x=>x.name===name);if(!target){target={name,values:Array(12).fill(null)};merged.push(target)};(c.values||[]).forEach((v,i)=>{if(v!=null){target.values[i]=(target.values[i]==null?0:target.values[i])+v}})});out[y]=merged});d.fixedCategories=out;return d}
 const normalizeCategoryName=n=>{const x=String(n||'').trim().toLowerCase().replace(/\s+/g,'');if(['claro','claro/net','claronet','net','vivo','vivo/claro','claro/vivo','internet'].includes(x))return 'Internet';if(['limpeza','taxadelimpeza'].includes(x))return 'Taxa de limpeza';return String(n||'').trim()};
-function loadMergedData(){const d=clone(BASE_DATA),o=loadOverrides();['revenue','fixed','maintenance','cleaning','financing'].forEach(t=>{d[t]=d[t]||{};Object.entries(o[t]||{}).filter(([y])=>y!=='2020').forEach(([y,vals])=>{if(!d[t][y])d[t][y]=Array(12).fill(null);Object.entries(vals||{}).forEach(([m,v])=>d[t][y][Number(m)]=v)})});d.fixedCategories=d.fixedCategories||{};Object.entries(d.cleaning||{}).forEach(([y,vals])=>{d.fixed[y]=d.fixed[y]||Array(12).fill(null);d.fixedCategories[y]=d.fixedCategories[y]||[];let cat=d.fixedCategories[y].find(x=>canonicalCategoryName(x.name)==='Taxa de limpeza');if(!cat){cat={name:'Taxa de limpeza',values:Array(12).fill(null)};d.fixedCategories[y].push(cat)};(vals||[]).forEach((v,i)=>{if(v!=null){cat.values[i]=v;d.fixed[y][i]=(d.fixed[y][i]??0)+v}})});Object.entries(o.fixedCategory||{}).forEach(([y,cats])=>{d.fixedCategories[y]=d.fixedCategories[y]||[];Object.entries(cats||{}).forEach(([rawName,vals])=>{const name=normalizeCategoryName(rawName);let c=d.fixedCategories[y].find(x=>normalizeCategoryName(x.name)===name);if(!c){c={name,values:Array(12).fill(null)};d.fixedCategories[y].push(c)};Object.entries(vals||{}).forEach(([m,v])=>{const i=Number(m);c.values[i]=(c.values[i]??0)+(v??0)})})});normalizeFixedCategories(d);
+function loadMergedData(){const d=clone(BASE_DATA),o=loadOverrides();['revenue','fixed','maintenance','cleaning','financing'].forEach(t=>{d[t]=d[t]||{};Object.entries(o[t]||{}).filter(([y])=>y!=='2020').forEach(([y,vals])=>{if(!d[t][y])d[t][y]=Array(12).fill(null);Object.entries(vals||{}).forEach(([m,v])=>d[t][y][Number(m)]=v)})});d.fixedCategories=d.fixedCategories||{};Object.entries(d.cleaning||{}).forEach(([y,vals])=>{d.fixed[y]=d.fixed[y]||Array(12).fill(null);d.fixedCategories[y]=d.fixedCategories[y]||[];let cat=d.fixedCategories[y].find(x=>canonicalCategoryName(x.name)==='Taxa de limpeza');if(!cat){cat={name:'Taxa de limpeza',values:Array(12).fill(null)};d.fixedCategories[y].push(cat)};(vals||[]).forEach((v,i)=>{if(v!=null){cat.values[i]=v;d.fixed[y][i]=(d.fixed[y][i]??0)+v}})});const fixedCategoryOverrideYears=new Set();Object.entries(o.fixedCategory||{}).forEach(([y,cats])=>{fixedCategoryOverrideYears.add(String(y));d.fixedCategories[y]=d.fixedCategories[y]||[];Object.entries(cats||{}).forEach(([rawName,vals])=>{const name=normalizeCategoryName(rawName);let c=d.fixedCategories[y].find(x=>normalizeCategoryName(x.name)===name);if(!c){c={name,values:Array(12).fill(null)};d.fixedCategories[y].push(c)};Object.entries(vals||{}).forEach(([m,v])=>{const i=Number(m);c.values[i]=Number(v)})})});normalizeFixedCategories(d);
+
+// Quando uma categoria é editada, ela substitui o valor original daquela categoria
+// e o custo fixo do mês volta a ser a soma de todas as categorias existentes.
+// Internet (inclusive registros antigos como Vivo/Claro/NET) entra nessa soma.
+// A taxa de limpeza permanece separada e continua sendo adicionada em getMonthData.
+fixedCategoryOverrideYears.forEach(y=>{
+  const arr=d.fixedCategories[y]||[];
+  d.fixed[y]=d.fixed[y]||Array(12).fill(null);
+  for(let i=0;i<12;i++){
+    let total=0,has=false;
+    arr.forEach(cat=>{
+      if(canonicalCategoryName(cat.name)==='Taxa de limpeza')return;
+      const v=cat?.values?.[i];
+      if(v!=null&&Number.isFinite(Number(v))){total+=Number(v);has=true;}
+    });
+    if(has)d.fixed[y][i]=total;
+  }
+});
 
 d.years=yearsFrom(d);return d}
 const DEFAULT_RATING_COUNTS={5:115,4:3,3:0,2:0,1:0};
