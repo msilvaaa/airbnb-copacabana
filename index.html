@@ -1406,31 +1406,37 @@ function resetFiltersToDefault(){
 // Ao abrir/reabrir o site, aguarda a leitura do Neon antes de desenhar
 // os valores. Assim o usuário não vê um valor provisório que muda sozinho.
 async function startDashboard(){
-  // Primeiro desenha imediatamente com o último estado disponível.
-  // Em janela privada, sem snapshot, usa a base embarcada e depois sincroniza
-  // com o Neon em segundo plano. A tela não fica bloqueada esperando o banco.
-  // A fonte financeira é sempre o Neon compartilhado. Não usamos snapshot
-  // do localStorage para os valores financeiros, pois ele pode estar diferente
-  // entre dispositivos.
+  // Desenha a tela imediatamente com a base já disponível.
+  // O acesso ao Neon acontece depois, sem bloquear filtros ou gráficos.
   try{
-    await loadSharedDashboardData();
-    // A nota vem da tabela centralizada do Neon; faz uma segunda leitura direta
-    // para garantir que a tela nunca fique presa ao valor de uma fonte antiga.
-    await syncLiveRating();
     DATA=loadMergedData();
     years=getYears();
     resetFiltersToDefault();
     renderRating();
     renderAll();
-    saveCloudSnapshot();
-    // Estado inicial definitivo da tela principal.
-    // Reaplica os valores somente depois que os dados e as opções já existem.
     applyDashboardOpeningDefaults();
   }catch(e){
+    console.error('Dashboard initial render error',e);
+  }
+
+  // Sincroniza os dados compartilhados em segundo plano.
+  // Mesmo que o Neon demore ou falhe, a tela inicial continua funcionando.
+  try{
+    await loadSharedDashboardData();
+    await syncLiveRating();
+    DATA=loadMergedData();
+    years=getYears();
+
+    // Atualiza os dados sem perder o estado de abertura solicitado.
+    resetFiltersToDefault();
+    renderRating();
+    renderAll();
+    applyDashboardOpeningDefaults();
+    saveCloudSnapshot();
+  }catch(e){
     console.error('Dashboard startup sync error',e);
-    // Nunca apaga uma avaliação já recuperada/salva só porque outra parte
-    // do carregamento do dashboard falhou. Isso era capaz de fazer 118 voltar
-    // para a distribuição padrão de 117.
+    // Mantém a tela já desenhada com a base local/embarcada.
+    // Nunca apaga uma avaliação já recuperada/salva só porque o Neon falhou.
     let preservedRating=null;
     try{
       const saved=JSON.parse(localStorage.getItem('airbnb_rating_last_saved')||'null');
@@ -1442,13 +1448,13 @@ async function startDashboard(){
     if(!preservedRating && cloudOverrides&&cloudOverrides.rating&&typeof cloudOverrides.rating==='object'){
       preservedRating=cloudOverrides.rating;
     }
-    cloudOverrides=preservedRating?{rating:preservedRating}:{};
-    cloudReady=!!preservedRating;
-    DATA=loadMergedData();
-    years=getYears();
-    resetFiltersToDefault();
-    renderRating();
-    renderAll();
+    if(preservedRating){
+      currentRating=preservedRating;
+      cloudOverrides={...(cloudOverrides||{}),rating:preservedRating};
+      cloudReady=true;
+      renderRating();
+    }
+    applyDashboardOpeningDefaults();
   }
 }
 [5,4,3,2,1].forEach(s=>qs('rating'+s)?.addEventListener('input',updateRatingPreview));
