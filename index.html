@@ -635,11 +635,16 @@ fixedCategoryOverrideYears.forEach(y=>{
   const baseCats=BASE_DATA.fixedCategories?.[y]||[];
   const originalFixed=BASE_DATA.fixed?.[y]||[];
   const savedFixed=o.fixed?.[y]||{};
+  const cats=o.fixedCategory?.[y]||{};
+  const overriddenMonths=new Set(Object.values(cats).flatMap(vals=>Object.keys(vals||{}).map(String)));
   d.fixed[y]=Array.from({length:12},(_,i)=>{
     const saved=savedFixed[String(i)];
+    // Um total salvo como zero após a antiga rotina de recálculo não deve apagar
+    // o total original do mês; quando há categorias editadas, partimos do total
+    // original e aplicamos somente as diferenças das categorias.
+    if(overriddenMonths.has(String(i)) && Number(saved)===0) return originalFixed[i]??null;
     return saved!=null&&Number.isFinite(Number(saved))?Number(saved):(originalFixed[i]??null);
   });
-  const cats=o.fixedCategory?.[y]||{};
   Object.entries(cats).forEach(([rawName,vals])=>{
     const name=normalizeCategoryName(rawName);
     const baseCat=baseCats.find(cat=>normalizeCategoryName(cat.name)===name);
