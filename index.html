@@ -344,8 +344,17 @@ let cloudEditorState=null;
 
 async function getAuthAccessToken(){
   try{
-    const auth=await getNeonAuthTokenClient();
-    return await auth.getJWTToken() || null;
+    // O editor não pode ficar indefinidamente preso em "Salvando no Neon..."
+    // se o cliente de autenticação demorar para devolver o JWT.
+    const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('Tempo limite ao obter a sessão do Neon')),7000));
+    const token=await Promise.race([
+      (async()=>{
+        const auth=await getNeonAuthTokenClient();
+        return await auth.getJWTToken() || null;
+      })(),
+      timeout
+    ]);
+    return token||null;
   }catch(e){
     console.error('Neon Auth JWT error:',e);
     return null;
@@ -364,10 +373,9 @@ function fetchWithTimeout(url,options={},timeoutMs=5000){
 async function apiRequest(method,body,publicRead=false){
   const headers=publicRead?{}:{'Content-Type':'application/json'};
   if(!publicRead){
-    try{
-      const token=await getAuthAccessToken();
-      if(token) headers.Authorization='Bearer '+token;
-    }catch(e){console.error('Neon Auth token error:',e)}
+    const token=await getAuthAccessToken();
+    if(!token) throw new Error('Sessão do Neon não está disponível. Faça login novamente.');
+    headers.Authorization='Bearer '+token;
   }
   const options={method,credentials:'include',headers};
   if(body!==undefined) options.body=JSON.stringify(body);
