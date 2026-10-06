@@ -1524,34 +1524,35 @@ function resetFiltersToDefault(){
 // Ao abrir/reabrir o site, aguarda a leitura do Neon antes de desenhar
 // os valores. Assim o usuário não vê um valor provisório que muda sozinho.
 async function startDashboard(){
-  // Na abertura/recarregamento, não desenha primeiro a BASE_DATA.
-  // Isso evitava o efeito de "voltar um ponto" e depois retornar ao valor do Neon.
-  // A tela só é desenhada com a fonte compartilhada já carregada.
+  // Usa imediatamente o último estado confirmado/sincronizado, quando existir.
+  // Assim a tela não passa por valores antigos nem altera os filtros durante a carga.
+  try{
+    const snapshot=loadCloudSnapshot();
+    if(snapshot?.overrides && typeof snapshot.overrides==='object'){
+      cloudOverrides=snapshot.overrides;
+      cloudReady=true;
+    }
+    DATA=loadMergedData();
+    years=getYears();
+    resetFiltersToDefault();
+    renderRating();
+    renderAll();
+    applyDashboardOpeningDefaults();
+  }catch(e){
+    console.error('Dashboard initial render error',e);
+  }
+
+  // Atualiza os dados em segundo plano sem tocar nos filtros já exibidos.
   try{
     await loadSharedDashboardData();
     await syncLiveRating();
     DATA=loadMergedData();
     years=getYears();
-    resetFiltersToDefault();
     renderRating();
     renderAll();
-    applyDashboardOpeningDefaults();
     saveCloudSnapshot();
-    return;
   }catch(e){
     console.error('Dashboard startup sync error:',e);
-  }
-
-  // Fallback somente se a leitura compartilhada falhar.
-  try{
-    DATA=loadMergedData();
-    years=getYears();
-    resetFiltersToDefault();
-    renderRating();
-    renderAll();
-    applyDashboardOpeningDefaults();
-  }catch(e){
-    console.error('Dashboard fallback render error:',e);
   }
 }
 [5,4,3,2,1].forEach(s=>qs('rating'+s)?.addEventListener('input',updateRatingPreview));
