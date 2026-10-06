@@ -1344,7 +1344,7 @@ qs('editModalClose').addEventListener('click',()=>qs('editModal').classList.remo
   const yearSel=qs('yearSelect'),startSel=qs('monthStartSelect'),endSel=qs('monthEndSelect'),viewSel=qs('viewSelect');
   if(id==='yearSelect'){
     if(yearSel.value==='all'){
-      viewSel.value='annual';
+      viewSel.value='monthly';
     }else{
       viewSel.value='monthly';
       const y=String(yearSel.value);
@@ -1381,7 +1381,7 @@ function applyDashboardOpeningDefaults(){
   yearSel.value='all';
   startSel.value='2021-00';
   endSel.value='2027-11';
-  viewSel.value='annual';
+  viewSel.value='monthly';
   syncYearSelectorForView();
   syncMonthPickerUI();
   syncChoicePickerUI();
