@@ -615,7 +615,7 @@ function loadMergedData(){const d=clone(BASE_DATA),o=loadOverrides();['revenue',
 // Quando uma categoria de custo é alterada, o total de custos fixos deve refletir a soma das categorias daquele mês. A taxa de limpeza permanece separada e é adicionada em getMonthData, evitando dupla contagem.
 Object.entries(o.fixedCategory||{}).forEach(([y,cats])=>{const arr=d.fixedCategories[y]||[];if(!Object.keys(cats||{}).length)return;d.fixed[y]=d.fixed[y]||Array(12).fill(null);for(let i=0;i<12;i++){let total=0,has=false;arr.forEach(c=>{if(canonicalCategoryName(c.name)==='Taxa de limpeza')return;const v=c?.values?.[i];if(v!=null&&Number.isFinite(Number(v))){total+=Number(v);has=true;}});if(has)d.fixed[y][i]=total;}});
 d.years=yearsFrom(d);return d}
-const DEFAULT_RATING_COUNTS={5:114,4:3,3:0,2:0,1:0};
+const DEFAULT_RATING_COUNTS={5:115,4:3,3:0,2:0,1:0};
 function getRatingCounts(){
   // Uma única fonte em memória para a tela principal e o editor.
   // Isso impede que uma leitura antiga do Neon substitua a nota recém-editada.
