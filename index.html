@@ -1374,12 +1374,12 @@ qs('editModalClose').addEventListener('click',()=>qs('editModal').classList.remo
 }));qs('themeBtn').addEventListener('click',()=>{document.body.classList.toggle('dark');qs('themeBtn').textContent=document.body.classList.contains('dark')?'☀':'☾';renderAll()});qs('printBtn').addEventListener('click',()=>window.print());
 document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.querySelectorAll('section[id^="tab-"]').forEach(s=>s.classList.add('hidden'));btn.classList.add('active');const target=qs('tab-'+btn.dataset.tab);target.classList.remove('hidden');try{renderAll()}catch(e){console.error('Erro ao renderizar o dashboard:',e)}if(btn.dataset.tab==='balance'){requestAnimationFrame(()=>{try{renderBalance()}catch(e){console.error('Erro ao renderizar Balanço:',e)}setTimeout(()=>{try{renderBalance()}catch(e){console.error('Erro ao renderizar Balanço:',e)}},50)})}}));
 function resetFiltersToDefault(){
-  // Ao abrir o site, os filtros devem SEMPRE começar em Todos os anos.
-  // Não usar anos fixos: a faixa acompanha exatamente os dados disponíveis.
+  // Estado inicial FIXO solicitado para a tela principal.
+  // Não alterar estes valores ao abrir/recarregar o dashboard.
   setSelects();
   qs('yearSelect').value='all';
-  qs('monthStartSelect').value=years.length?String(years[0])+'-00':'';
-  qs('monthEndSelect').value=years.length?String(years[years.length-1])+'-11':'';
+  qs('monthStartSelect').value='2021-00';
+  qs('monthEndSelect').value='2027-11';
   qs('viewSelect').value='annual';
   syncYearSelectorForView();
   syncMonthPickerUI();
