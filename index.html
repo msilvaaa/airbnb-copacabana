@@ -634,7 +634,7 @@ function loadMergedData(){const d=clone(BASE_DATA),o=loadOverrides();['revenue',
 fixedCategoryOverrideYears.forEach(y=>{
   const baseFixed=BASE_DATA.fixed?.[y]||[];
   const baseCats=BASE_DATA.fixedCategories?.[y]||[];
-  d.fixed[y]=Array.from({length:12},(_,i)=>baseFixed[i]??null);
+  d.fixed[y]=Array.from({length:12},(_,i)=>d.fixed?.[y]?.[i]??null);
   const cats=o.fixedCategory?.[y]||{};
   Object.entries(cats).forEach(([rawName,vals])=>{
     const name=normalizeCategoryName(rawName);
