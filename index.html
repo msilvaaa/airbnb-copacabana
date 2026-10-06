@@ -1173,10 +1173,8 @@ function renderAll(){
     years=yearsFrom(DATA);
     if(!years.length)years=yearsFrom(BASE_DATA);
   }
-  // "Todos os anos" + "Mensal" deve usar todo o intervalo selecionado.
-  if(qs('yearSelect')?.value==='all'){
-    if(qs('viewSelect'))qs('viewSelect').value='monthly';
-  }
+  // Somente o modo Comparar exige visão mensal.
+  // "Todos os anos" pode permanecer normalmente em Anual.
   if(compareMode&&qs('viewSelect'))qs('viewSelect').value='monthly';
   updatePeriodBadges();
   renderKpis();
@@ -1399,12 +1397,11 @@ function applyDashboardOpeningDefaults(){
   yearSel.value='all';
   startSel.value='2021-00';
   endSel.value='2027-11';
-  viewSel.value='monthly';
+  viewSel.value='annual';
   syncYearSelectorForView();
   syncMonthPickerUI();
   syncChoicePickerUI();
   // Depois de aplicar os quatro valores de abertura, redesenha os gráficos.
-  // Assim o conteúdo visual nunca fica com a visão anterior (Anual).
   renderAll();
 }
 
