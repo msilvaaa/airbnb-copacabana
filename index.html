@@ -1167,7 +1167,25 @@ function renderCleaningChart(){const y=qs('yearSelect').value,p=periodBounds(),v
 function renderFinance(){const y=qs('yearSelect').value,p=periodBounds(),view=qs('viewSelect').value,yrs=Object.keys(DATA.financing).sort((a,b)=>Number(a)-Number(b)),ys=y==='all'?yrs:[String(y)],yr=y==='all'?yrs[yrs.length-1]:String(y),title=qs('finChartTitle'),sub=qs('finChartSub');if(view==='monthly'){if(title)title.textContent='Financiamento mensal';if(sub)sub.textContent='Parcelas registradas no período';const activePoints=compareMode?comparisonPoints():(y==='all'?p.points:p.points.filter(d=>d.year===String(y)));barChart(qs('finMonthlyChart'),activePoints.map(d=>MONTHS[d.month]+'/'+d.year),activePoints.map(d=>DATA.financing[d.year]?.[d.month]??null),{color:COLORS.purple,name:'Financiamento'});}else{if(title)title.textContent='Financiamento anual';if(sub)sub.textContent='Total por ano no período';barChart(qs('finMonthlyChart'),ys,ys.map(yy=>sumPeriodForYear(DATA.financing[yy],yy,p)),{color:COLORS.purple,name:'Financiamento no período'});}}
 function renderBalance(){const y=qs('yearSelect').value,p=periodBounds(),view=qs('viewSelect').value,ys=y==='all'?years:[String(y)],yr=y==='all'?years[years.length-1]:String(y);const title=qs('balanceChartTitle'),sub=qs('balanceChartSub');if(view==='monthly'){const activePoints=compareMode?comparisonPoints():(y==='all'?p.points:p.points.filter(d=>d.year===String(yr)));if(title)title.textContent='Balanço mensal';if(sub)sub.textContent='Receita menos custos fixos, manutenção e taxa de limpeza';balanceBarChart(qs('balanceOnlyChart'),activePoints.map(d=>MONTHS[d.month]+'/'+d.year),activePoints.map(d=>getMonthData(d.year,d.month).result));}else{if(title)title.textContent='Balanço anual';if(sub)sub.textContent='Resultado calculável por ano';balanceBarChart(qs('balanceOnlyChart'),ys,ys.map(yy=>periodStats(yy,p.start,p.end).balance));}tableRows('balanceBody')}
 function renderTable(){tableRows('dataBody');qs('dataNote').textContent='Os valores são recalculados automaticamente a cada lançamento salvo.'}
-function renderAll(){if(compareMode&&qs('viewSelect'))qs('viewSelect').value='monthly';updatePeriodBadges();renderKpis();renderOverview();renderCosts();renderFinance();renderBalance();renderTable()}
+function renderAll(){
+  // Garante que a lista de anos exista antes de calcular o período.
+  if(!Array.isArray(years)||!years.length){
+    years=yearsFrom(DATA);
+    if(!years.length)years=yearsFrom(BASE_DATA);
+  }
+  // "Todos os anos" + "Mensal" deve usar todo o intervalo selecionado.
+  if(qs('yearSelect')?.value==='all'){
+    if(qs('viewSelect'))qs('viewSelect').value='monthly';
+  }
+  if(compareMode&&qs('viewSelect'))qs('viewSelect').value='monthly';
+  updatePeriodBadges();
+  renderKpis();
+  renderOverview();
+  renderCosts();
+  renderFinance();
+  renderBalance();
+  renderTable();
+}
 
 function updateLoggedUser(){
   const el=qs('loggedUserEmail');
