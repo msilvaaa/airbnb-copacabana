@@ -439,10 +439,10 @@ async function loadSharedDashboardData(){
       o[t][y][m]=Number(row.valor);
     }
   });
-  // Do not replace a newer locally-known rating; dedicated rating endpoint
-  // remains the authoritative source for that piece.
+  // Os dados públicos retornados pelo Neon são a fonte oficial da tela
+  // principal, mesmo quando o usuário ainda não abriu o editor.
   cloudOverrides=o;
-  cloudReady=!!cloudUser;
+  cloudReady=true;
   return o;
 }
 async function syncLiveRating(){
