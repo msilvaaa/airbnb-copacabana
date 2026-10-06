@@ -625,38 +625,25 @@ function yearsFrom(d){return [...new Set([...(d.years||[]).map(String),...Object
 function canonicalCategoryName(name){const n=String(name||'').trim().replace(/\s+/g,' ').toLowerCase();if(['claro','claro / net','claro/net','claronet','net','vivo','vivo / claro','vivo/claro','claro / vivo','claro/vivo','internet'].includes(n))return 'Internet';return String(name||'').trim()}
 function normalizeFixedCategories(d){const out={};Object.entries(d.fixedCategories||{}).forEach(([y,arr])=>{const merged=[];(arr||[]).forEach(c=>{const name=canonicalCategoryName(c.name);let target=merged.find(x=>x.name===name);if(!target){target={name,values:Array(12).fill(null)};merged.push(target)};(c.values||[]).forEach((v,i)=>{if(v!=null){target.values[i]=(target.values[i]==null?0:target.values[i])+v}})});out[y]=merged});d.fixedCategories=out;return d}
 const normalizeCategoryName=n=>{const x=String(n||'').trim().toLowerCase().replace(/\s+/g,'');if(['claro','claro/net','claronet','net','vivo','vivo/claro','claro/vivo','internet'].includes(x))return 'Internet';if(['limpeza','taxadelimpeza'].includes(x))return 'Taxa de limpeza';return String(n||'').trim()};
-function loadMergedData(){const d=clone(BASE_DATA),o=loadOverrides();['revenue','fixed','maintenance','cleaning','financing'].forEach(t=>{d[t]=d[t]||{};Object.entries(o[t]||{}).filter(([y])=>y!=='2020').forEach(([y,vals])=>{if(!d[t][y])d[t][y]=Array(12).fill(null);Object.entries(vals||{}).forEach(([m,v])=>d[t][y][Number(m)]=v)})});d.fixedCategories=d.fixedCategories||{};Object.entries(d.cleaning||{}).forEach(([y,vals])=>{d.fixed[y]=d.fixed[y]||Array(12).fill(null);d.fixedCategories[y]=d.fixedCategories[y]||[];let cat=d.fixedCategories[y].find(x=>canonicalCategoryName(x.name)==='Taxa de limpeza');if(!cat){cat={name:'Taxa de limpeza',values:Array(12).fill(null)};d.fixedCategories[y].push(cat)};(vals||[]).forEach((v,i)=>{if(v!=null){cat.values[i]=v;d.fixed[y][i]=(d.fixed[y][i]??0)+v}})});const fixedCategoryOverrideYears=new Set();Object.entries(o.fixedCategory||{}).forEach(([y,cats])=>{fixedCategoryOverrideYears.add(String(y));d.fixedCategories[y]=d.fixedCategories[y]||[];Object.entries(cats||{}).forEach(([rawName,vals])=>{const name=normalizeCategoryName(rawName);let c=d.fixedCategories[y].find(x=>normalizeCategoryName(x.name)===name);if(!c){c={name,values:Array(12).fill(null)};d.fixedCategories[y].push(c)};Object.entries(vals||{}).forEach(([m,v])=>{c.values[Number(m)]=Number(v)})})});normalizeFixedCategories(d);
+function loadMergedData(){const d=clone(BASE_DATA),o=loadOverrides();['revenue','fixed','maintenance','cleaning','financing'].forEach(t=>{d[t]=d[t]||{};Object.entries(o[t]||{}).filter(([y])=>y!=='2020').forEach(([y,vals])=>{if(!d[t][y])d[t][y]=Array(12).fill(null);Object.entries(vals||{}).forEach(([m,v])=>d[t][y][Number(m)]=v)})});d.fixedCategories=d.fixedCategories||{};Object.entries(d.cleaning||{}).forEach(([y,vals])=>{d.fixed[y]=d.fixed[y]||Array(12).fill(null);d.fixedCategories[y]=d.fixedCategories[y]||[];let cat=d.fixedCategories[y].find(x=>canonicalCategoryName(x.name)==='Taxa de limpeza');if(!cat){cat={name:'Taxa de limpeza',values:Array(12).fill(null)};d.fixedCategories[y].push(cat)};(vals||[]).forEach((v,i)=>{if(v!=null){cat.values[i]=v;d.fixed[y][i]=(d.fixed[y][i]??0)+v}})});Object.entries(o.fixedCategory||{}).forEach(([y,cats])=>{d.fixedCategories[y]=d.fixedCategories[y]||[];Object.entries(cats||{}).forEach(([rawName,vals])=>{const name=normalizeCategoryName(rawName);let c=d.fixedCategories[y].find(x=>normalizeCategoryName(x.name)===name);if(!c){c={name,values:Array(12).fill(null)};d.fixedCategories[y].push(c)};Object.entries(vals||{}).forEach(([m,v])=>{c.values[Number(m)]=Number(v)})})});normalizeFixedCategories(d);
 
-// O custo fixo é a soma de todos os componentes. Quando uma categoria tem
-// lançamento manual, ela substitui apenas a parcela dessa categoria; os demais
-// custos permanecem no total original do mês. Categorias novas (por exemplo,
-// Internet no mês em que o valor original está vazio) são acrescentadas ao total.
-fixedCategoryOverrideYears.forEach(y=>{
-  const baseCats=BASE_DATA.fixedCategories?.[y]||[];
-  const originalFixed=BASE_DATA.fixed?.[y]||[];
-  const savedFixed=o.fixed?.[y]||{};
-  const cats=o.fixedCategory?.[y]||{};
-  const overriddenMonths=new Set(Object.values(cats).flatMap(vals=>Object.keys(vals||{}).map(String)));
-  d.fixed[y]=Array.from({length:12},(_,i)=>{
-    const saved=savedFixed[String(i)];
-    // Um total salvo como zero após a antiga rotina de recálculo não deve apagar
-    // o total original do mês; quando há categorias editadas, partimos do total
-    // original e aplicamos somente as diferenças das categorias.
-    if(overriddenMonths.has(String(i)) && Number(saved)===0) return originalFixed[i]??null;
-    return saved!=null&&Number.isFinite(Number(saved))?Number(saved):(originalFixed[i]??null);
-  });
-  Object.entries(cats).forEach(([rawName,vals])=>{
-    const name=normalizeCategoryName(rawName);
-    const baseCat=baseCats.find(cat=>normalizeCategoryName(cat.name)===name);
-    const baseValues=baseCat?.values||[];
-    Object.entries(vals||{}).forEach(([m,v])=>{
-      const i=Number(m),newValue=Number(v);
-      const originalValue=baseValues[i]!=null&&Number.isFinite(Number(baseValues[i]))?Number(baseValues[i]):0;
-      const currentTotal=d.fixed[y][i];
-      const totalBase=currentTotal!=null&&Number.isFinite(Number(currentTotal))?Number(currentTotal):0;
-      d.fixed[y][i]=totalBase+(newValue-originalValue);
+// REGRA ÚNICA: Custos fixos = soma da composição de custos fixos.
+// Cada categoria compõe o total do mês; um valor editado substitui o valor
+// daquela categoria. A taxa de limpeza fica fora dessa soma.
+Object.entries(d.fixedCategories||{}).forEach(([y,cats])=>{
+  d.fixed[y]=d.fixed[y]||Array(12).fill(null);
+  for(let i=0;i<12;i++){
+    let total=0,has=false;
+    (cats||[]).forEach(cat=>{
+      if(canonicalCategoryName(cat.name)==='Taxa de limpeza')return;
+      const v=cat?.values?.[i];
+      if(v!=null&&Number.isFinite(Number(v))){
+        total+=Number(v);
+        has=true;
+      }
     });
-  });
+    if(has)d.fixed[y][i]=total;
+  }
 });
 
 d.years=yearsFrom(d);return d}
