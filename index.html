@@ -929,7 +929,7 @@ function lineChart(el,labels,series){const svg=svgBase(el),th=theme(),W=760,H=30
 function barChart(el,labels,values,opts={}){const compareLabels=compareMode&&labels.length<=2;const svg=svgBase(el),th=theme(),W=760,H=300,p={l:58,r:18,t:18,b:compareLabels?52:44},iw=W-p.l-p.r,ih=H-p.t-p.b,vals=values.filter(v=>v!=null);if(!vals.length){el.innerHTML='<div class="empty">Sem dados suficientes para este gráfico.</div>';return}const max=Math.max(0,...vals)*1.15||1;for(let g=0;g<=4;g++){const yy=p.t+ih*g/4;addLine(svg,p.l,yy,W-p.r,yy,th.line,1,'4 5');addText(svg,p.l-8,yy+4,moneyK(max-max*g/4),th.muted,15,'end')}const n=labels.length,slot=iw/n,bw=Math.max(10,slot*.58);labels.forEach((lab,i)=>{const v=values[i];if(v==null)return;const x=p.l+slot*i+(slot-bw)/2,h=Math.max(0,v)/max*ih,y=p.t+ih-h,r=svgEl('rect',{x,y,width:bw,height:h,rx:7,fill:opts.color||COLORS.blue});r.addEventListener('mousemove',e=>tip(e,'<b>'+lab+'</b><br>'+fmt(v)));r.addEventListener('mouseleave',hideTip);svg.appendChild(r);if(n<=12||i%2===0)addText(svg,x+bw/2,H-(compareLabels?20:16),(compareLabels?lab:(lab.length>11?lab.slice(0,10)+'…':lab)),th.muted,15,'middle',compareLabels?'600':'400')});rememberChart(el,el.closest('.card')?.querySelector('.card-title')?.textContent||'Gráfico',labels,[{name:opts.name||'Valor',values,color:opts.color||COLORS.blue}],'bar')}
 function groupedBar(el,labels,series){const svg=svgBase(el),th=theme(),W=760,H=300,p={l:58,r:18,t:18,b:44},iw=W-p.l-p.r,ih=H-p.t-p.b,all=series.flatMap(s=>s.values.filter(v=>v!=null));if(!all.length){el.innerHTML='<div class="empty">Sem dados suficientes.</div>';return}const max=Math.max(0,...all)*1.15||1;for(let g=0;g<=4;g++){const yy=p.t+ih*g/4;addLine(svg,p.l,yy,W-p.r,yy,th.line,1,'4 5');addText(svg,p.l-8,yy+4,moneyK(max-max*g/4),th.muted,15,'end')}const n=labels.length,slot=iw/n,bw=Math.max(7,slot*.72/series.length);labels.forEach((lab,i)=>{series.forEach((s,j)=>{const v=s.values[i];if(v==null)return;const x=p.l+slot*i+slot*.14+j*bw,h=v/max*ih,y=p.t+ih-h,r=svgEl('rect',{x,y,width:Math.max(3,bw-3),height:h,rx:5,fill:s.color});r.addEventListener('mousemove',e=>tip(e,'<b>'+lab+'</b><br>'+s.name+': '+fmt(v)));r.addEventListener('mouseleave',hideTip);svg.appendChild(r)});if(n<=12||i%2===0)addText(svg,p.l+slot*i+slot/2,H-16,(compareMode&&n<=2)?lab:(lab.length>11?lab.slice(0,10)+'…':lab),th.muted,15)});rememberChart(el,el.closest('.card')?.querySelector('.card-title')?.textContent||'Gráfico',labels,series,'grouped')}
 function donutChart(el,labels,values,colors){
-  const svg=svgBase(el,420,260),th=theme(),cx=125,cy=126,R=78,r=47,total=values.filter(v=>v!=null&&v>0).reduce((a,b)=>a+b,0);
+  const svg=svgBase(el,420,260),th=theme(),cx=120,cy=126,R=76,r=46,total=values.filter(v=>v!=null&&v>0).reduce((a,b)=>a+b,0);
   if(!total){el.innerHTML='<div class="empty">Sem detalhamento disponível.</div>';return}
   let a0=-Math.PI/2;
   values.forEach((v,i)=>{
@@ -946,10 +946,10 @@ function donutChart(el,labels,values,colors){
   addText(svg,cx,121,fmt(total),th.ink,15,'middle','900');
   addText(svg,cx,140,'Total',th.muted,13,'middle','700');
   labels.forEach((l,i)=>{
-    const y=39+i*25,sw=svgEl('rect',{x:224,y:y-8,width:9,height:9,rx:3,fill:colors[i%colors.length]});
+    const y=36+i*25,sw=svgEl('rect',{x:218,y:y-7,width:8,height:8,rx:2.5,fill:colors[i%colors.length]});
     svg.appendChild(sw);
-    const label=l.length>20?l.slice(0,19)+'…':l;
-    addText(svg,239,y,label+' · '+pct(values[i]/total),th.muted,11.5,'start','600')
+    const label=l.length>18?l.slice(0,17)+'…':l;
+    addText(svg,231,y,label+' · '+pct(values[i]/total),th.muted,10,'start','600')
   });
   rememberChart(el,el.closest('.card')?.querySelector('.card-title')?.textContent||'Gráfico',labels,[{name:'Valor',values}], 'donut')
 }
