@@ -446,56 +446,30 @@ async function loadSharedDashboardData(){
   return o;
 }
 async function syncLiveRating(){
-  // Durante a sessão, a última nota confirmada pelo editor é a fonte
-  // da tela. Uma nova leitura do Neon não pode sobrescrevê-la.
-  if(currentRating && [5,4,3,2,1].every(s=>Number.isInteger(Number(currentRating[s])) && Number(currentRating[s])>=0)
-    && Object.values(currentRating).reduce((a,b)=>a+Number(b),0)>0){
-    return currentRating;
-  }
+  // A nota compartilhada no Neon é sempre a fonte oficial.
+  // Não permitir que localStorage ou o estado deste navegador sobrescrevam
+  // um valor mais recente gravado por outro dispositivo.
   const payload=await liveRatingRequest('GET');
   const serverRating={
     5:Number(payload.nota_5),4:Number(payload.nota_4),3:Number(payload.nota_3),
     2:Number(payload.nota_2),1:Number(payload.nota_1)
   };
-  if([5,4,3,2,1].some(s=>!Number.isInteger(serverRating[s])||serverRating[s]<0) || Object.values(serverRating).reduce((a,b)=>a+b,0)<=0){
+  if([5,4,3,2,1].some(s=>!Number.isInteger(serverRating[s])||serverRating[s]<0)
+    || Object.values(serverRating).reduce((a,b)=>a+b,0)<=0){
     throw new Error('A API de avaliações não retornou uma distribuição válida.');
   }
-
-  // A última gravação confirmada neste navegador tem prioridade absoluta.
-  // O backend atual ainda pode devolver a distribuição antiga do Neon após
-  // um recarregamento; neste caso não podemos deixar a tela voltar para 117.
-  let rating=serverRating;
-  // 117/4,97 e 123/4,83 são estados antigos e nunca podem voltar para a tela principal.
-  const serverTotal=Object.values(serverRating).reduce((a,b)=>a+Number(b),0);
-  const serverPoints=5*serverRating[5]+4*serverRating[4]+3*serverRating[3]+2*serverRating[2]+serverRating[1];
-  const serverAverage=serverTotal?serverPoints/serverTotal:null;
-  const serverIsStale=(serverTotal===117 && serverAverage!=null && Math.round(serverAverage*100)/100===4.97)
-    || (serverTotal===123 && serverAverage!=null && Math.round(serverAverage*100)/100===4.83);
-  if(serverIsStale) rating={5:115,4:3,3:0,2:0,1:0};
-  try{
-    const saved=JSON.parse(localStorage.getItem('airbnb_rating_last_saved')||'null');
-    if(saved?.rating && [5,4,3,2,1].every(s=>Number.isInteger(Number(saved.rating[s])) && Number(saved.rating[s])>=0)
-      && Object.values(saved.rating).reduce((a,b)=>a+Number(b),0)>0){
-      const savedRating={
-        5:Number(saved.rating[5]),4:Number(saved.rating[4]),3:Number(saved.rating[3]),
-        2:Number(saved.rating[2]),1:Number(saved.rating[1])
-      };
-      const savedTotal=Object.values(savedRating).reduce((a,b)=>a+Number(b),0);
-      const savedPoints=5*savedRating[5]+4*savedRating[4]+3*savedRating[3]+2*savedRating[2]+savedRating[1];
-      const savedAverage=savedTotal?savedPoints/savedTotal:null;
-      const savedIsStale=(savedTotal===117 && savedAverage!=null && Math.round(savedAverage*100)/100===4.97)
-        || (savedTotal===123 && savedAverage!=null && Math.round(savedAverage*100)/100===4.83);
-      if(!savedIsStale) rating=savedRating;
-    }
-  }catch(e){}
-
-  currentRating={
-    5:Number(rating[5]),4:Number(rating[4]),3:Number(rating[3]),
-    2:Number(rating[2]),1:Number(rating[1])
-  };
+  currentRating={...serverRating};
   cloudOverrides=cloudOverrides||{};
-  cloudOverrides.rating=currentRating;
+  cloudOverrides.rating={...serverRating};
   cloudReady=true;
+  // Atualiza o cache local apenas como cópia de leitura; nunca como fonte
+  // prioritária sobre o valor confirmado pelo servidor.
+  try{
+    localStorage.setItem('airbnb_rating_last_saved',JSON.stringify({
+      rating:serverRating,
+      savedAt:payload.updated_at?new Date(payload.updated_at).getTime():Date.now()
+    }));
+  }catch(e){}
   return currentRating;
 }
 async function loadCloudOverrides(allowPublic=false){
