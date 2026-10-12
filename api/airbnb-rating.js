@@ -85,21 +85,10 @@ module.exports=async function handler(req,res){
   try{
     await ensureRatingTable();
     if(req.method==="GET"){
-      let cookieRating=parseRatingCookie(req);
+      // A leitura pública sempre retorna a linha compartilhada do Neon.
+      // Cookies antigos de um navegador não podem substituir o valor global.
       const rows=await sql`SELECT nota_5,nota_4,nota_3,nota_2,nota_1,updated_at FROM public.airbnb_rating_config WHERE id=1`;
       let row=rows[0]||{nota_5:115,nota_4:3,nota_3:0,nota_2:0,nota_1:0};
-
-      // Ignora estados antigos/default que ainda possam estar presos no cookie.
-      // A distribuição correta deste dashboard é 115 avaliações de 5 estrelas
-      // + 3 de 4 estrelas = 118 avaliações, nota exibida 4,97.
-      if(cookieRating){
-        const cookieTotal=[5,4,3,2,1].reduce((a,s)=>a+Number(cookieRating[s]||0),0);
-        const cookiePoints=5*Number(cookieRating[5]||0)+4*Number(cookieRating[4]||0)+3*Number(cookieRating[3]||0)+2*Number(cookieRating[2]||0)+Number(cookieRating[1]||0);
-        const cookieAverage=cookieTotal?cookiePoints/cookieTotal:null;
-        const staleCookie=(cookieTotal===123 && cookieAverage!=null && Math.round(cookieAverage*100)/100===4.83)
-          || (cookieTotal===117 && cookieAverage!=null && Math.round(cookieAverage*100)/100===4.97);
-        if(staleCookie) cookieRating=null;
-      }
 
       // Migração do estado antigo que estava alimentando a tela principal
       // com 123 avaliações / nota exibida 4,83. O editor já trabalha com
@@ -110,7 +99,7 @@ module.exports=async function handler(req,res){
         .reduce((a,v)=>a+Number(v||0),0);
       const legacyPoints=5*Number(row.nota_5||0)+4*Number(row.nota_4||0)+3*Number(row.nota_3||0)+2*Number(row.nota_2||0)+Number(row.nota_1||0);
       const legacyAverage=legacyTotal?legacyPoints/legacyTotal:null;
-      if(!cookieRating && ((legacyTotal===123 && legacyAverage!=null && Math.round(legacyAverage*100)/100===4.83)
+      if((legacyTotal===123 && legacyAverage!=null && Math.round(legacyAverage*100)/100===4.83)
         || (legacyTotal===117 && legacyAverage!=null && Math.round(legacyAverage*100)/100===4.97))){
         const migrated=await sql`
           UPDATE public.airbnb_rating_config
@@ -121,9 +110,6 @@ module.exports=async function handler(req,res){
         if(migrated[0]) row=migrated[0];
       }
 
-      if(cookieRating){
-        row={nota_5:cookieRating[5],nota_4:cookieRating[4],nota_3:cookieRating[3],nota_2:cookieRating[2],nota_1:cookieRating[1],updated_at:row.updated_at||null};
-      }
       return setJson(res,200,{
         nota_5:Number(row.nota_5),nota_4:Number(row.nota_4),nota_3:Number(row.nota_3),
         nota_2:Number(row.nota_2),nota_1:Number(row.nota_1),
