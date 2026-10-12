@@ -100,7 +100,7 @@ module.exports=async function handler(req,res){
       const legacyPoints=5*Number(row.nota_5||0)+4*Number(row.nota_4||0)+3*Number(row.nota_3||0)+2*Number(row.nota_2||0)+Number(row.nota_1||0);
       const legacyAverage=legacyTotal?legacyPoints/legacyTotal:null;
       if((legacyTotal===123 && legacyAverage!=null && Math.round(legacyAverage*100)/100===4.83)
-        || (legacyTotal===117 && legacyAverage!=null && Math.round(legacyAverage*100)/100===4.97))){
+        || (legacyTotal===117 && legacyAverage!=null && Math.round(legacyAverage*100)/100===4.97)){
         const migrated=await sql`
           UPDATE public.airbnb_rating_config
           SET nota_5=115,nota_4=3,nota_3=0,nota_2=0,nota_1=0,updated_at=now()
