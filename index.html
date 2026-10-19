@@ -969,7 +969,7 @@ function periodLabel(){const p=periodBounds();if(compareMode&&p.startKey!==p.end
 function periodForYear(y,p=periodBounds()){const yy=String(y);return {start:yy===p.startYear?(p.start):0,end:yy===p.endYear?p.end:11};}
 function sumPeriod(arr,start,end){const vals=(arr||[]).slice(start,end+1).filter(v=>v!=null&&Number.isFinite(v));return vals.length?vals.reduce((a,b)=>a+b,0):null}
 function sumPeriodForYear(arr,yr,p){if(String(yr)<p.startYear||String(yr)>p.endYear)return null;const r=periodForYear(yr,p);return sumPeriod(arr,r.start,r.end)}
-function periodStats(y,start,end){let rev=0,fix=0,maint=0,balance=0,bn=0;const p=periodBounds(),r=periodForYear(y,p);for(let i=r.start;i<=r.end;i++){const d=getMonthData(String(y),i);if(d.r!=null)rev+=d.r;if(d.f!=null)fix+=d.f;if(d.m!=null)maint+=d.m;if(d.result!=null){balance+=d.result;bn++}}return {rev,fix,maint,balance:bn?balance:null,margin:rev&&bn?balance/rev:null,bn}}
+function periodStats(y,start,end){let rev=0,fix=0,maint=0,balance=0,bn=0;const p=periodBounds(),r=periodForYear(y,p);for(let i=r.start;i<=r.end;i++){const d=getMonthData(String(y),i);if(d.result!=null){rev+=d.r;fix+=d.f;maint+=d.m??0;balance+=d.result;bn++}}return {rev,fix,maint,balance:bn?balance:null,margin:rev&&bn?balance/rev:null,bn}}
 function categoryTotalsForPoints(points){const cats={};(points||[]).forEach(d=>{const yr=String(d.year),i=d.month;(DATA.fixedCategories[yr]||[]).forEach(c=>{const name=canonicalCategoryName(c.name);if(name==='Apartamento')return;const v=c.values?.[i];if(v!=null&&Number.isFinite(Number(v)))cats[name]=(cats[name]||0)+Number(v)});const fv=DATA.financing?.[yr]?.[i];if(fv!=null&&Number.isFinite(Number(fv)))cats.Apartamento=(cats.Apartamento||0)+Number(fv)});return cats}
 function categoryTotalsRange(y,start,end){const p=periodBounds(),cats={},ys=y==='all'?years:[String(y)];ys.forEach(yr=>{const r=periodForYear(yr,p);if(String(yr)<p.startYear||String(yr)>p.endYear)return;(DATA.fixedCategories[yr]||[]).forEach(c=>{const name=canonicalCategoryName(c.name);if(name==='Apartamento')return;for(let i=r.start;i<=r.end;i++){const v=c.values?.[i];if(v!=null&&Number.isFinite(Number(v)))cats[name]=(cats[name]||0)+Number(v)}})});const finYears=y==='all'?Object.keys(DATA.financing):[String(y)];finYears.forEach(yr=>{const r=periodForYear(yr,p);if(String(yr)<p.startYear||String(yr)>p.endYear)return;for(let i=r.start;i<=r.end;i++){const v=DATA.financing?.[yr]?.[i];if(v!=null&&Number.isFinite(Number(v)))cats.Apartamento=(cats.Apartamento||0)+Number(v)}});return cats}
 function setSelects(){
@@ -1160,10 +1160,10 @@ function renderKpis(){
       const points=compareMode?comparisonPoints():p.points;
       points.forEach(d=>{
         const x=getMonthData(String(d.year),d.month);
-        if(x.r!=null)rev+=x.r;
-        if(x.f!=null)fix+=x.f;
-        if(x.m!=null)maint+=x.m;
-        if(x.result!=null){balance=(balance||0)+x.result;complete++;}
+        if(x.result!=null){
+          rev+=x.r;fix+=x.f;maint+=x.m??0;
+          balance=(balance||0)+x.result;complete++;
+        }
       });
       margin=rev&&complete?balance/rev:null;
     }else{
@@ -1176,10 +1176,10 @@ function renderKpis(){
       // selecionado na visão mensal, apenas agrupados por ano nos gráficos.
       p.rangePoints.forEach(d=>{
         const x=getMonthData(String(d.year),d.month);
-        if(x.r!=null)rev+=x.r;
-        if(x.f!=null)fix+=x.f;
-        if(x.m!=null)maint+=x.m;
-        if(x.result!=null){balance=(balance||0)+x.result;complete++;}
+        if(x.result!=null){
+          rev+=x.r;fix+=x.f;maint+=x.m??0;
+          balance=(balance||0)+x.result;complete++;
+        }
       });
     }else{
       const st=periodStats(yr,p.start,p.end);
@@ -1189,7 +1189,7 @@ function renderKpis(){
   }
   qs('mainTitle').textContent=view==='monthly'?'Evolução mensal':'Evolução anual';
   qs('coverageBadge').textContent=periodLabel();
-  const cleaningOverviewPoints=view==='monthly'?(compareMode?comparisonPoints():(y==='all'?p.points:p.points.filter(d=>d.year===String(y)))):(y==='all'?p.rangePoints:p.rangePoints.filter(d=>d.year===String(y)));const cleaningOverviewValues=cleaningOverviewPoints.map(d=>DATA.cleaning?.[String(d.year)]?.[d.month]).filter(v=>v!=null&&Number.isFinite(Number(v))).map(Number);const cleaningOverviewTotal=cleaningOverviewValues.reduce((s,v)=>s+Number(v),0);const custosTotaisOverview=fix+maint+cleaningOverviewTotal;
+  const cleaningOverviewPoints=(view==='monthly'?(compareMode?comparisonPoints():(y==='all'?p.points:p.points.filter(d=>d.year===String(y)))):(y==='all'?p.rangePoints:p.rangePoints.filter(d=>d.year===String(y)))).filter(d=>getMonthData(String(d.year),d.month).result!=null);const cleaningOverviewValues=cleaningOverviewPoints.map(d=>DATA.cleaning?.[String(d.year)]?.[d.month]).filter(v=>v!=null&&Number.isFinite(Number(v))).map(Number);const cleaningOverviewTotal=cleaningOverviewValues.reduce((s,v)=>s+Number(v),0);const custosTotaisOverview=fix+maint+cleaningOverviewTotal;
   qs('kpis').innerHTML=[['Receita',fmt(rev),view==='monthly'?'total do período selecionado':'total comparável do período',''],['Custos totais',fmt(custosTotaisOverview),'custos fixos + manutenção + taxa de limpeza',''],['Custos fixos',fmt(fix),complete+' período(s) com balanço',''],['Manutenção',fmt(maint),'separada dos custos fixos',''],['Balanço',fmt(balance),balance==null?'dados incompletos':'receita − custos',' balance-fixed']].map(a=>'<div class="kpi"><div class="k-label">'+a[0]+'</div><div class="k-val'+a[3]+'">'+a[1]+'</div><div class="k-sub">'+a[2]+'</div></div>').join('');
   const cats=categoryTotalsRange(y,p.start,p.end),largest=Object.entries(cats).sort((a,b)=>b[1]-a[1])[0];
   const financingSelectedYears=y==='all'?Object.keys(DATA.financing).filter(yy=>yy!=='2020'):[String(y)]; const financingSelectedValues=financingSelectedYears.flatMap(yy=>(DATA.financing[yy]||[]).slice(p.start,p.end+1).filter(v=>v!=null)); const financingSelectedTotal=financingSelectedValues.length?financingSelectedValues.reduce((a,b)=>a+b,0):null;
