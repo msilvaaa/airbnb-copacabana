@@ -479,12 +479,20 @@ async function loadCloudOverrides(allowPublic=false){
     const data=payload.rows||[];
     if(payload.editorState && typeof payload.editorState==='object') cloudEditorState=payload.editorState;
     const o={};
+    const legacyCleaning={};
     data.forEach(row=>{
       const y=String(row.ano),m=String(row.mes),t=row.tipo;
       if(t==='rating'){o.rating=o.rating||{};o.rating[String(row.categoria||'')]=Number(row.valor);return;}
       if(t==='fixedCategory' && String(row.categoria||'').startsWith('__airbnb_rating_')){
         o.rating=o.rating||{};
         o.rating[String(row.categoria).replace('__airbnb_rating_','')]=Number(row.valor);
+        return;
+      }
+      // Compatibilidade com lançamentos antigos: a taxa de limpeza foi salva
+      // anteriormente como fixedCategory. Reaproveita esse valor na série cleaning.
+      if(t==='fixedCategory' && normalizeCategoryName(row.categoria)==='Taxa de limpeza'){
+        legacyCleaning[y]=legacyCleaning[y]||{};
+        legacyCleaning[y][m]=Number(row.valor);
         return;
       }
       if(t==='fixedCategory'){
@@ -494,6 +502,10 @@ async function loadCloudOverrides(allowPublic=false){
         o[t]=o[t]||{};o[t][y]=o[t][y]||{};o[t][y][m]=Number(row.valor);
       }
     });
+    // Lançamentos novos do tipo cleaning têm prioridade sobre os antigos.
+    Object.entries(legacyCleaning).forEach(([y,months])=>Object.entries(months).forEach(([m,v])=>{
+      if(o.cleaning?.[y]?.[m]==null){o.cleaning=o.cleaning||{};o.cleaning[y]=o.cleaning[y]||{};o.cleaning[y][m]=v;}
+    }));
     cloudOverrides=o;cloudReady=true;saveCloudSnapshot();return o;
   }catch(e){
     console.error('Neon load error',e);
