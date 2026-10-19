@@ -1350,6 +1350,19 @@ async function saveCategoryOverride(y,m,name,v){
   if(!(await ensureEditorCloudSession())){console.error('Category save blocked: editor is not authenticated in Neon.');return false;}
   try{
     const year=Number(y),month=Number(m),value=Number(v);
+    // A taxa de limpeza é um lançamento separado dos custos fixos.
+    // Mesmo quando escolhida no seletor de composição, deve alimentar a série
+    // cleaning usada pelos KPIs, gráficos e cálculo do balanço.
+    if(normalizeCategoryName(name)==='Taxa de limpeza'){
+      await writeCloudRow(cloudUser,year,month,'cleaning','',value);
+      // Remove eventual lançamento antigo gravado como categoria fixa.
+      try{await apiRequest('DELETE',{ano:year,mes:month,tipo:'fixedCategory',categoria:name});}catch(e){console.warn('Não foi possível remover a antiga categoria de taxa de limpeza:',e)}
+      await loadCloudOverrides(false);
+      DATA=loadMergedData();
+      years=getYears();
+      saveCloudSnapshot();
+      return true;
+    }
     // Uma única requisição ao Neon salva a categoria.
     // O total de custos fixos é recalculado automaticamente a partir da composição.
     const saved=await writeCloudRow(cloudUser,year,month,'fixedCategory',name,value);
