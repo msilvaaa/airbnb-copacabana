@@ -1171,7 +1171,20 @@ function renderKpis(){
       ({rev,fix,maint,balance,margin}=st); complete=st.bn;
     }
   }else{
-    ys.forEach(yr=>{const st=periodStats(yr,p.start,p.end);rev+=st.rev||0;fix+=st.fix||0;maint+=st.maint||0;if(st.balance!=null){balance=(balance||0)+st.balance;complete+=st.bn}});
+    if(y==='all'){
+      // A visão anual deve somar exatamente os mesmos meses do intervalo
+      // selecionado na visão mensal, apenas agrupados por ano nos gráficos.
+      p.rangePoints.forEach(d=>{
+        const x=getMonthData(String(d.year),d.month);
+        if(x.r!=null)rev+=x.r;
+        if(x.f!=null)fix+=x.f;
+        if(x.m!=null)maint+=x.m;
+        if(x.result!=null){balance=(balance||0)+x.result;complete++;}
+      });
+    }else{
+      const st=periodStats(yr,p.start,p.end);
+      ({rev,fix,maint,balance,margin}=st); complete=st.bn;
+    }
     margin=rev&&balance!=null?balance/rev:null;
   }
   qs('mainTitle').textContent=view==='monthly'?'Evolução mensal':'Evolução anual';
