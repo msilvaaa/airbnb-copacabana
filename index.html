@@ -614,8 +614,8 @@ function normalizeFixedCategories(d){const out={};Object.entries(d.fixedCategori
 const normalizeCategoryName=n=>{const x=String(n||'').trim().toLowerCase().replace(/\s+/g,'');if(['claro','claro/net','claronet','net','vivo','vivo/claro','claro/vivo','internet'].includes(x))return 'Internet';if(['limpeza','taxadelimpeza'].includes(x))return 'Taxa de limpeza';return String(n||'').trim()};
 function loadMergedData(){const d=clone(BASE_DATA),o=loadOverrides();['revenue','fixed','maintenance','cleaning','financing'].forEach(t=>{d[t]=d[t]||{};Object.entries(o[t]||{}).filter(([y])=>y!=='2020').forEach(([y,vals])=>{if(!d[t][y])d[t][y]=Array(12).fill(null);Object.entries(vals||{}).forEach(([m,v])=>d[t][y][Number(m)]=v)})});d.fixedCategories=d.fixedCategories||{};Object.entries(d.cleaning||{}).forEach(([y,vals])=>{d.fixed[y]=d.fixed[y]||Array(12).fill(null);d.fixedCategories[y]=d.fixedCategories[y]||[];let cat=d.fixedCategories[y].find(x=>canonicalCategoryName(x.name)==='Taxa de limpeza');if(!cat){cat={name:'Taxa de limpeza',values:Array(12).fill(null)};d.fixedCategories[y].push(cat)};(vals||[]).forEach((v,i)=>{if(v!=null){cat.values[i]=v;d.fixed[y][i]=(d.fixed[y][i]??0)+v}})});Object.entries(o.fixedCategory||{}).forEach(([y,cats])=>{d.fixedCategories[y]=d.fixedCategories[y]||[];Object.entries(cats||{}).forEach(([rawName,vals])=>{const name=normalizeCategoryName(rawName);let c=d.fixedCategories[y].find(x=>normalizeCategoryName(x.name)===name);if(!c){c={name,values:Array(12).fill(null)};d.fixedCategories[y].push(c)};Object.entries(vals||{}).forEach(([m,v])=>{c.values[Number(m)]=Number(v)})})});normalizeFixedCategories(d);
 
-// REGRA ÚNICA: Custos fixos = soma de IPTU + Apartamento + Condomínio
-// + Internet + Light + Naturgy. A taxa de limpeza é calculada separadamente.
+// REGRA ÚNICA: Custos fixos = composição fixa + financiamento.
+// A taxa de limpeza e a manutenção são calculadas separadamente.
 Object.entries(d.fixedCategories||{}).forEach(([y,cats])=>{
   d.fixed[y]=d.fixed[y]||Array(12).fill(null);
   for(let i=0;i<12;i++){
@@ -628,6 +628,11 @@ Object.entries(d.fixedCategories||{}).forEach(([y,cats])=>{
         has=true;
       }
     });
+    const financing=d.financing?.[y]?.[i];
+    if(financing!=null&&Number.isFinite(Number(financing))){
+      total+=Number(financing);
+      has=true;
+    }
     if(has)d.fixed[y][i]=total;
   }
 });
@@ -1411,7 +1416,7 @@ async function clearCategoryOverride(y,m,name){
 }
 function refreshCategorySelector(){const sel=qs('editCategory');if(!sel)return;const current=sel.value;sel.innerHTML=ensureCategoryNames().map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');if(ensureCategoryNames().includes(current))sel.value=current;}
 async function updateEditorMode(){const t=qs('editType').value,isCat=t==='fixedCategory',isFixed=t==='fixed',isRating=t==='rating';qs('editYearField').classList.toggle('hidden',isRating);qs('editMonthField').classList.toggle('hidden',isRating);qs('editAddValueField').classList.toggle('hidden',isRating);qs('editValueField').classList.toggle('hidden',isRating);qs('ratingField').classList.toggle('hidden',!isRating);qs('editAddValueField').classList.toggle('add-value-under-revenue',['revenue','maintenance','cleaning','financing'].includes(t));qs('editAddValueField').closest('.form-grid').classList.toggle('add-value-below',['revenue','maintenance','cleaning','financing'].includes(t));qs('categoryField').classList.toggle('hidden',!isCat);qs('editFixedTotalField').classList.toggle('hidden',!isFixed);refreshCategorySelector();if(isRating){qs('saveState').textContent='Lendo a nota atual...';try{const c=await syncLiveRating();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=c[s]);renderRating();}catch(e){console.error('Rating live read error:',e);const c=getRatingCounts();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=c[s]);renderRating();}updateRatingPreview();qs('saveState').textContent='Edite a quantidade de avaliações por estrela.';}else{syncEditValue();syncFixedTotalPreview();}}
-function syncFixedTotalPreview(){const y=Number(qs('editYear').value),m=Number(qs('editMonth').value);let total=0,has=false;FIXED_COMPOSITION_NAMES.forEach(name=>{const v=categoryValue(y,m,name);if(v!=null&&Number.isFinite(Number(v))){total+=Number(v);has=true}});qs('editFixedTotalPreview').value=has?fmt(total):'R$ 0,00';}
+function syncFixedTotalPreview(){const y=String(qs('editYear').value),m=Number(qs('editMonth').value);let total=0,has=false;FIXED_COMPOSITION_NAMES.forEach(name=>{const v=categoryValue(y,m,name);if(v!=null&&Number.isFinite(Number(v))){total+=Number(v);has=true}});const financing=DATA.financing?.[y]?.[m];if(financing!=null&&Number.isFinite(Number(financing))){total+=Number(financing);has=true}qs('editFixedTotalPreview').value=has?fmt(total):'R$ 0,00';}
 function syncEditValue(){const y=String(qs('editYear').value||''),m=Number(qs('editMonth').value),t=qs('editType').value,o=loadOverrides();
   if(t==='fixedCategory'){refreshCategorySelector();const name=qs('editCategory').value,saved=o.fixedCategory?.[y]?.[name]?.[String(m)],current=categoryValue(y,m,name);qs('editValue').value=saved??(current??'');qs('saveState').textContent=saved!=null?'Existe um lançamento manual salvo para esta categoria.':'Valor original / vazio.';return}
   const saved=o[t]?.[y]?.[String(m)],current=DATA[t]?.[y]?.[m];qs('editValue').value=saved??(current??'');qs('saveState').textContent=saved!=null?'Existe um lançamento manual salvo.':'Valor original / vazio.'
