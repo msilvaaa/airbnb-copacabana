@@ -1036,6 +1036,18 @@ function openChartModal(el){
     clone.style.cursor='default';
     clone.onclick=null;
     visual.appendChild(clone);
+    /* O gráfico Balanço é construído em HTML, não em SVG; os eventos do original
+       não são copiados ao ampliar, por isso são religados às barras clonadas. */
+    if(meta.type==='balance'){
+      clone.querySelectorAll('.balance-bar').forEach((bar,i)=>{
+        bar.style.pointerEvents='auto';
+        bar.addEventListener('mousemove',e=>{
+          tip(e,'<b>'+meta.labels[i]+'</b><br>Balanço: '+(meta.series[0].values[i]==null?'—':fmt(meta.series[0].values[i])));
+        });
+        bar.addEventListener('mouseleave',hideTip);
+      });
+    }
+    clone.addEventListener('mouseleave',hideTip);
   }
 
   let html='<h3>Resumo do gráfico</h3>';
