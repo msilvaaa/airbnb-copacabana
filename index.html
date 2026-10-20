@@ -988,6 +988,22 @@ function openChartModal(el){
     clone.style.width='100%';clone.style.height='100%';
     clone.style.minHeight=window.innerWidth<=650?'350px':'520px';
     visual.appendChild(clone);
+    /* Tooltip no gráfico ampliado: usa os mesmos dados do gráfico original sem alterar seu desenho. */
+    clone.style.pointerEvents='auto';
+    clone.addEventListener('mousemove',e=>{
+      const rect=clone.getBoundingClientRect();
+      const vb=clone.viewBox&&clone.viewBox.baseVal;
+      const viewWidth=vb&&vb.width?vb.width:760;
+      const x=(e.clientX-rect.left)/Math.max(1,rect.width)*viewWidth;
+      const left=vb&&vb.width?vb.x:0;
+      const right=left+viewWidth;
+      const ratio=Math.max(0,Math.min(1,(x-left)/(right-left)));
+      const idx=Math.max(0,Math.min(meta.labels.length-1,Math.round(ratio*(meta.labels.length-1))));
+      if(!meta.labels.length)return;
+      const rows=meta.series.map(s=>'<span style="color:'+s.color+'">●</span> '+s.name+': <b>'+(s.values[idx]==null?'—':chartNumber(s.values[idx]))+'</b>').join('<br>');
+      tip(e,'<b>'+meta.labels[idx]+'</b><br>'+rows);
+    });
+    clone.addEventListener('mouseleave',hideTip);
     /* Mantém o tamanho visual das fontes igual ao gráfico original mesmo ampliado. */
     const normalizeExpandedChartFonts=()=>{const scaleOf=svg=>{const vb=svg.viewBox?.baseVal,rect=svg.getBoundingClientRect(),vw=vb?.width||760,vh=vb?.height||300;return Math.min(rect.width/vw,rect.height/vh)||1;};const originalScale=scaleOf(original),expandedScale=scaleOf(clone);if(!originalScale||!expandedScale)return;const factor=originalScale/expandedScale;clone.querySelectorAll('text').forEach(label=>{const current=parseFloat(label.getAttribute('font-size'))||12;label.setAttribute('font-size',String(current*factor));});};
     requestAnimationFrame(normalizeExpandedChartFonts);
