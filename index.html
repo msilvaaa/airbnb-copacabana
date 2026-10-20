@@ -1087,7 +1087,7 @@ function donutChart(el,labels,values,colors){
   addText(svg,cx,window.innerWidth<=650?165:145,fmt(total),th.ink,15,'middle','900');
   addText(svg,cx,window.innerWidth<=650?184:164,'Total',th.muted,13,'middle','700');
   labels.forEach((l,i)=>{
-    const y=(window.innerWidth<=650?48:44)+i*(window.innerWidth<=650?30:28),sw=svgEl('rect',{x:window.innerWidth<=650?205:204,y:y-8,width:10,height:10,rx:2.5,fill:colors[i%colors.length]});
+    const y=(window.innerWidth<=650?48:92)+i*(window.innerWidth<=650?30:28),sw=svgEl('rect',{x:window.innerWidth<=650?205:204,y:y-8,width:10,height:10,rx:2.5,fill:colors[i%colors.length]});
     svg.appendChild(sw);
     const label=l.length>20?l.slice(0,19)+'…':l;
     addText(svg,window.innerWidth<=650?222:222,y,label+' · '+pct(values[i]/total),th.muted,window.innerWidth<=650?12:12,'start','600')
