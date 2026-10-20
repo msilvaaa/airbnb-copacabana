@@ -990,24 +990,39 @@ function openChartModal(el){
     visual.appendChild(clone);
     /* Tooltip no gráfico ampliado: usa os mesmos dados do gráfico original sem alterar seu desenho. */
     clone.style.pointerEvents='auto';
-    clone.addEventListener('mousemove',e=>{
-      const rect=clone.getBoundingClientRect();
-      const vb=clone.viewBox&&clone.viewBox.baseVal;
-      const viewWidth=vb&&vb.width?vb.width:760;
-      if(!meta.labels.length)return;
-      const x=(e.clientX-rect.left)/Math.max(1,rect.width)*viewWidth;
-      const left=vb&&vb.width?vb.x:0;
-      const n=meta.labels.length;
-      /* Alinha o índice à área real de plotagem (760 px, margens de 90 px e 18 px),
-         em vez de distribuir os dados por toda a largura do SVG. */
-      const plotLeft=90, plotRight=742, plotWidth=plotRight-plotLeft;
-      const ratio=Math.max(0,Math.min(1,(x-plotLeft)/plotWidth));
-      const idx=meta.type==='bar'
-        ? Math.max(0,Math.min(n-1,Math.floor(ratio*n)))
-        : Math.max(0,Math.min(n-1,Math.round(ratio*(n-1))));
-      const rows=meta.series.map(s=>'<span style="color:'+s.color+'">●</span> '+s.name+': <b>'+(s.values[idx]==null?'—':fmt(s.values[idx]))+'</b>').join('<br>');
-      tip(e,'<b>'+meta.labels[idx]+'</b><br>'+rows);
-    });
+    if(meta.type==='donut'){
+      /* No gráfico de pizza, cada fatia representa uma categoria: manter o mesmo
+         comportamento da página inicial e associar o tooltip à fatia sob o mouse. */
+      const sliceIndexes=meta.series[0].values.map((v,i)=>({v,i})).filter(x=>x.v!=null&&x.v>0);
+      const total=sliceIndexes.reduce((sum,x)=>sum+x.v,0);
+      clone.querySelectorAll('path').forEach((slice,j)=>{
+        const item=sliceIndexes[j];
+        if(!item)return;
+        slice.style.pointerEvents='auto';
+        slice.addEventListener('mousemove',e=>{
+          tip(e,'<b>'+meta.labels[item.i]+'</b><br>'+fmt(item.v)+' · '+pct(total?item.v/total:0));
+        });
+        slice.addEventListener('mouseleave',hideTip);
+      });
+    }else{
+      clone.addEventListener('mousemove',e=>{
+        const rect=clone.getBoundingClientRect();
+        const vb=clone.viewBox&&clone.viewBox.baseVal;
+        const viewWidth=vb&&vb.width?vb.width:760;
+        if(!meta.labels.length)return;
+        const x=(e.clientX-rect.left)/Math.max(1,rect.width)*viewWidth;
+        const n=meta.labels.length;
+        /* Alinha o índice à área real de plotagem (760 px, margens de 90 px e 18 px),
+           em vez de distribuir os dados por toda a largura do SVG. */
+        const plotLeft=90, plotRight=742, plotWidth=plotRight-plotLeft;
+        const ratio=Math.max(0,Math.min(1,(x-plotLeft)/plotWidth));
+        const idx=meta.type==='bar'
+          ? Math.max(0,Math.min(n-1,Math.floor(ratio*n)))
+          : Math.max(0,Math.min(n-1,Math.round(ratio*(n-1))));
+        const rows=meta.series.map(s=>'<span style="color:'+s.color+'">●</span> '+s.name+': <b>'+(s.values[idx]==null?'—':fmt(s.values[idx]))+'</b>').join('<br>');
+        tip(e,'<b>'+meta.labels[idx]+'</b><br>'+rows);
+      });
+    }
     clone.addEventListener('mouseleave',hideTip);
     /* Mantém o tamanho visual das fontes igual ao gráfico original mesmo ampliado. */
     const normalizeExpandedChartFonts=()=>{const scaleOf=svg=>{const vb=svg.viewBox?.baseVal,rect=svg.getBoundingClientRect(),vw=vb?.width||760,vh=vb?.height||300;return Math.min(rect.width/vw,rect.height/vh)||1;};const originalScale=scaleOf(original),expandedScale=scaleOf(clone);if(!originalScale||!expandedScale)return;const factor=originalScale/expandedScale;clone.querySelectorAll('text').forEach(label=>{const current=parseFloat(label.getAttribute('font-size'))||12;label.setAttribute('font-size',String(current*factor));});};
