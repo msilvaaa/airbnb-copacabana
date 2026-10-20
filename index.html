@@ -1503,7 +1503,10 @@ qs('editModalClose').addEventListener('click',()=>qs('editModal').classList.remo
   const yearSel=qs('yearSelect'),startSel=qs('monthStartSelect'),endSel=qs('monthEndSelect'),viewSel=qs('viewSelect');
   if(id==='yearSelect'){
     if(yearSel.value==='all'){
-      viewSel.value='monthly';
+      // "Todos os anos" abre a comparação anual de todo o histórico.
+      viewSel.value='annual';
+      startSel.value=years[0]+'-00';
+      endSel.value=years[years.length-1]+'-11';
     }else{
       viewSel.value='monthly';
       const y=String(yearSel.value);
