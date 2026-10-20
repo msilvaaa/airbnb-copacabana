@@ -1676,3 +1676,32 @@ startDashboard();
     white-space:nowrap!important;box-sizing:border-box!important;
   }
 }
+
+
+/* Ajuste definitivo do cabeçalho da janela ampliada no celular: título em cima, botões compactos abaixo */
+@media(max-width:650px){
+  .chart-modal-head{
+    display:flex!important;flex-direction:column!important;align-items:stretch!important;
+    justify-content:flex-start!important;gap:10px!important;padding:12px 14px!important;
+    width:100%!important;min-width:0!important;
+  }
+  .chart-modal-head>div:first-child{
+    display:block!important;flex:0 0 auto!important;width:100%!important;min-width:0!important;
+  }
+  .chart-modal-title{font-size:16px!important;line-height:1.25!important;overflow-wrap:anywhere!important}
+  .chart-modal-sub{font-size:11px!important;line-height:1.35!important;overflow-wrap:anywhere!important}
+  .chart-modal-head .chart-modal-actions{
+    display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:8px!important;align-items:center!important;justify-content:stretch!important;
+    flex:0 0 auto!important;width:100%!important;max-width:100%!important;margin:0!important;
+  }
+  .chart-modal-head .chart-modal-print,
+  .chart-modal-head .chart-modal-close{
+    display:flex!important;align-items:center!important;justify-content:center!important;
+    flex:initial!important;width:100%!important;min-width:0!important;max-width:100%!important;
+    height:40px!important;min-height:40px!important;max-height:40px!important;
+    padding:6px 8px!important;margin:0!important;font-size:12px!important;line-height:1.1!important;
+    font-weight:750!important;white-space:nowrap!important;overflow:hidden!important;
+    box-sizing:border-box!important;border-radius:10px!important;
+  }
+}
