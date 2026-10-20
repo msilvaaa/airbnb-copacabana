@@ -1662,3 +1662,17 @@ startDashboard();
 
 </script>
 </body></html>
+
+/* Correção isolada: botões Imprimir/PDF e Fechar na janela ampliada, somente no celular */
+@media(max-width:650px){
+  .chart-modal-head{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:8px!important}
+  .chart-modal-head>div:first-child{flex:1 1 150px!important;min-width:0!important}
+  .chart-modal-head .chart-modal-actions{display:flex!important;flex:0 0 auto!important;width:auto!important;max-width:100%!important;gap:6px!important;margin-left:auto!important}
+  .chart-modal-head .chart-modal-print,
+  .chart-modal-head .chart-modal-close{
+    flex:0 0 auto!important;width:auto!important;min-width:0!important;max-width:none!important;
+    height:36px!important;min-height:36px!important;max-height:36px!important;
+    padding:7px 10px!important;margin:0!important;font-size:12px!important;line-height:1!important;
+    white-space:nowrap!important;box-sizing:border-box!important;
+  }
+}
