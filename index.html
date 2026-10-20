@@ -994,13 +994,18 @@ function openChartModal(el){
       const rect=clone.getBoundingClientRect();
       const vb=clone.viewBox&&clone.viewBox.baseVal;
       const viewWidth=vb&&vb.width?vb.width:760;
+      if(!meta.labels.length)return;
       const x=(e.clientX-rect.left)/Math.max(1,rect.width)*viewWidth;
       const left=vb&&vb.width?vb.x:0;
-      const right=left+viewWidth;
-      const ratio=Math.max(0,Math.min(1,(x-left)/(right-left)));
-      const idx=Math.max(0,Math.min(meta.labels.length-1,Math.round(ratio*(meta.labels.length-1))));
-      if(!meta.labels.length)return;
-      const rows=meta.series.map(s=>'<span style="color:'+s.color+'">●</span> '+s.name+': <b>'+(s.values[idx]==null?'—':chartNumber(s.values[idx]))+'</b>').join('<br>');
+      const n=meta.labels.length;
+      /* Alinha o índice à área real de plotagem (760 px, margens de 90 px e 18 px),
+         em vez de distribuir os dados por toda a largura do SVG. */
+      const plotLeft=90, plotRight=742, plotWidth=plotRight-plotLeft;
+      const ratio=Math.max(0,Math.min(1,(x-plotLeft)/plotWidth));
+      const idx=meta.type==='bar'
+        ? Math.max(0,Math.min(n-1,Math.floor(ratio*n)))
+        : Math.max(0,Math.min(n-1,Math.round(ratio*(n-1))));
+      const rows=meta.series.map(s=>'<span style="color:'+s.color+'">●</span> '+s.name+': <b>'+(s.values[idx]==null?'—':fmt(s.values[idx]))+'</b>').join('<br>');
       tip(e,'<b>'+meta.labels[idx]+'</b><br>'+rows);
     });
     clone.addEventListener('mouseleave',hideTip);
