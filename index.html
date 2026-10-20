@@ -278,6 +278,31 @@ body.dark .controls .ctrl:nth-child(2) select,body.dark .controls .ctrl:nth-chil
   }
 }
 
+
+/* Ajuste fino: botões compactos, sem ocupar toda a largura do modal */
+@media screen and (max-width:650px){
+  .chart-modal .chart-modal-box .chart-modal-actions{
+    display:flex !important;
+    justify-content:flex-start !important;
+    align-self:flex-start !important;
+    width:auto !important;
+    max-width:100% !important;
+    gap:8px !important;
+  }
+  .chart-modal .chart-modal-box .chart-modal-actions .chart-modal-print,
+  .chart-modal .chart-modal-box .chart-modal-actions .chart-modal-close{
+    width:auto !important;
+    min-width:0 !important;
+    max-width:none !important;
+    flex:0 0 auto !important;
+    padding:5px 9px !important;
+    height:34px !important;
+    min-height:34px !important;
+    max-height:34px !important;
+    font-size:11px !important;
+  }
+}
+
 </style>
 <!-- Build atualizado: metas de avaliação sem pontuação final -->
 <!-- layout-rating-v2 -->
