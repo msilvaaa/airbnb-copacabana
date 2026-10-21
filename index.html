@@ -29,8 +29,8 @@ button,input,select{font:inherit}.app{max-width:1500px;margin:auto;padding:24px}
 #kpis .kpi:nth-child(4) .k-val{color:var(--light-red)!important}
 #kpis .kpi:nth-child(5) .k-val{color:var(--orange)!important}
 #balanceKpis .kpi:nth-child(1) .k-val{color:var(--blue)!important}
-#balanceKpis .kpi:nth-child(2) .k-val{color:var(--red)!important}
-#balanceKpis .kpi:nth-child(3) .k-val{color:var(--green)!important}
+#balanceKpis .kpi:nth-child(2) .k-val{color:var(--green)!important}
+#balanceKpis .kpi:nth-child(3) .k-val{color:var(--red)!important}
 #balanceKpis .kpi:nth-child(4) .k-val{color:var(--purple)!important}
 #balanceKpis .kpi:nth-child(5) .k-val{color:var(--muted)!important}
 .kpi .k-val.margin-fixed{color:var(--purple)!important}
@@ -1389,7 +1389,7 @@ function renderKpis(){
     :finYears.filter(yy=>y==='all'||yy===String(y)).flatMap(yy=>(DATA.financing[yy]||[]).slice(p.start,p.end+1).filter(v=>v!=null&&Number.isFinite(Number(v))).map(Number));
   const finTotal=finPeriodValues.length?finPeriodValues.reduce((a,b)=>a+b,0):null, finAvg=finPeriodValues.length?finTotal/finPeriodValues.length:null, finCount=finPeriodValues.filter(v=>v>0).length;
   qs('financeKpis').innerHTML=[['Financiamento',fmt(finTotal),'total do período'],['Parcela média',fmt(finAvg),'nos meses disponíveis'],['Número de meses pagos',finCount,'parcelas > 0 no período'],['Primeiro registro','2020','base histórica']].map(a=>'<div class="kpi"><div class="k-label">'+a[0]+'</div><div class="k-val">'+a[1]+'</div><div class="k-sub">'+a[2]+'</div></div>').join('');
-  const custosTotaisBalance=fix+maint+cleaningOverviewTotal;qs('balanceKpis').innerHTML=[['Receita',fmt(rev),'total registrado no intervalo selecionado'],['Custos totais',fmt(custosTotaisBalance),'custos fixos + manutenção + taxa de limpeza'],['Balanço',fmt(balance),balance==null?'—':balance>=0?'positivo':'negativo','balance-fixed'],['Margem',pct(margin),'sobre a receita dos meses completos',' margin-fixed'],['Cobertura',complete,'mês(es) calculáveis']].map(a=>'<div class="kpi"><div class="k-label">'+a[0]+'</div><div class="k-val '+(a[3]||'')+'">'+a[1]+'</div><div class="k-sub">'+a[2]+'</div></div>').join('');
+  const custosTotaisBalance=fix+maint+cleaningOverviewTotal;qs('balanceKpis').innerHTML=[['Receita',fmt(rev),'total registrado no intervalo selecionado'],['Balanço',fmt(balance),balance==null?'—':balance>=0?'positivo':'negativo','balance-fixed'],['Custos totais',fmt(custosTotaisBalance),'custos fixos + manutenção + taxa de limpeza'],['Margem',pct(margin),'sobre a receita dos meses completos',' margin-fixed'],['Cobertura',complete,'mês(es) calculáveis']].map(a=>'<div class="kpi"><div class="k-label">'+a[0]+'</div><div class="k-val '+(a[3]||'')+'">'+a[1]+'</div><div class="k-sub">'+a[2]+'</div></div>').join('');
 }
 function renderOverview(){
   const y=qs('yearSelect').value,p=periodBounds(),view=qs('viewSelect').value;
