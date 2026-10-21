@@ -1643,7 +1643,8 @@ async function saveCategoryOverride(y,m,name,v){
   }
 }
 async function clearCategoryOverride(y,m,name){
-  const aliases=[name,'Internet','Claro','Claro / NET','Claro/NET','ClaroNet','NET','Internet','Vivo / Claro','Vivo/Claro','Claro / Vivo','Claro/Vivo'];
+  const isInternet=canonicalCategoryName(name)==='Internet';
+  const aliases=isInternet?[name,'Internet','Claro','Claro / NET','Claro/NET','ClaroNet','NET','Vivo / Claro','Vivo/Claro','Claro / Vivo','Claro/Vivo']:[name];
   if(!(await ensureEditorCloudSession())){console.error('Category clear blocked: editor is not authenticated in Neon.');return false;}
   try{
     for(const n of aliases) await apiRequest('DELETE',{ano:Number(y),mes:Number(m),tipo:'fixedCategory',categoria:n});
