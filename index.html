@@ -772,13 +772,13 @@ Object.entries(d.fixedCategories||{}).forEach(([y,cats])=>{
         has=true;
       }
     });
-    // Apartamento é o campo que o usuário preenche para esta despesa.
-    // Use seu valor como fonte principal e Financiamento apenas como alternativa.
-    // Nunca somar os dois, pois representam a mesma despesa.
+    // A categoria "Apartamento" replica a série "Financiamento" mês a mês.
+    // Contamos apenas uma das duas: priorizamos a série Financing e usamos
+    // a categoria Apartamento como fallback quando não houver parcela registrada.
     const financing=d.financing?.[y]?.[i];
     const apartmentCategory=(cats||[]).find(c=>canonicalCategoryName(c.name)==='Apartamento');
     const apartment=apartmentCategory?.values?.[i];
-    const installment=apartment!=null&&Number.isFinite(Number(apartment))?apartment:financing;
+    const installment=financing!=null&&Number.isFinite(Number(financing))?financing:apartment;
     if(installment!=null&&Number.isFinite(Number(installment))){
       total+=Number(installment);
       has=true;
@@ -1640,7 +1640,7 @@ async function clearCategoryOverride(y,m,name){
 }
 function refreshCategorySelector(){const sel=qs('editCategory');if(!sel)return;const current=sel.value;sel.innerHTML=ensureCategoryNames().map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>').join('');if(ensureCategoryNames().includes(current))sel.value=current;}
 async function updateEditorMode(){const t=qs('editType').value,isCat=t==='fixedCategory',isFixed=t==='fixed',isRating=t==='rating';qs('editYearField').classList.toggle('hidden',isRating);qs('editMonthField').classList.toggle('hidden',isRating);qs('editAddValueField').classList.toggle('hidden',isRating);qs('editValueField').classList.toggle('hidden',isRating);qs('ratingField').classList.toggle('hidden',!isRating);qs('editAddValueField').classList.toggle('add-value-under-revenue',['revenue','maintenance','cleaning','financing'].includes(t));qs('editAddValueField').closest('.form-grid').classList.toggle('add-value-below',['revenue','maintenance','cleaning','financing'].includes(t));qs('categoryField').classList.toggle('hidden',!isCat);qs('editFixedTotalField').classList.toggle('hidden',!isFixed);refreshCategorySelector();if(isRating){qs('saveState').textContent='Lendo a nota atual...';try{const c=await syncLiveRating();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=c[s]);renderRating();}catch(e){console.error('Rating live read error:',e);const c=getRatingCounts();[5,4,3,2,1].forEach(s=>qs('rating'+s).value=c[s]);renderRating();}updateRatingPreview();qs('saveState').textContent='Edite a quantidade de avaliações por estrela.';}else{syncEditValue();syncFixedTotalPreview();}}
-function syncFixedTotalPreview(){const y=String(qs('editYear').value),m=Number(qs('editMonth').value);let total=0,has=false;FIXED_COMPOSITION_NAMES.forEach(name=>{const v=categoryValue(y,m,name);if(v!=null&&Number.isFinite(Number(v))){total+=Number(v);has=true}});const apartment=categoryValue(y,m,'Apartamento'),financing=DATA.financing?.[y]?.[m],installment=apartment!=null&&Number.isFinite(Number(apartment))?apartment:financing;if(installment!=null&&Number.isFinite(Number(installment))){total+=Number(installment);has=true}qs('editFixedTotalPreview').value=has?fmt(total):'R$ 0,00';}
+function syncFixedTotalPreview(){const y=String(qs('editYear').value),m=Number(qs('editMonth').value);let total=0,has=false;FIXED_COMPOSITION_NAMES.forEach(name=>{const v=categoryValue(y,m,name);if(v!=null&&Number.isFinite(Number(v))){total+=Number(v);has=true}});const financing=DATA.financing?.[y]?.[m];if(financing!=null&&Number.isFinite(Number(financing))){total+=Number(financing);has=true}qs('editFixedTotalPreview').value=has?fmt(total):'R$ 0,00';}
 function syncEditValue(){const y=String(qs('editYear').value||''),m=Number(qs('editMonth').value),t=qs('editType').value,o=loadOverrides();
   if(t==='fixedCategory'){refreshCategorySelector();const name=qs('editCategory').value,saved=o.fixedCategory?.[y]?.[name]?.[String(m)],current=categoryValue(y,m,name);qs('editValue').value=saved??(current??'');qs('saveState').textContent=saved!=null?'Existe um lançamento manual salvo para esta categoria.':'Valor original / vazio.';return}
   const saved=o[t]?.[y]?.[String(m)],current=DATA[t]?.[y]?.[m];qs('editValue').value=saved??(current??'');qs('saveState').textContent=saved!=null?'Existe um lançamento manual salvo.':'Valor original / vazio.'
