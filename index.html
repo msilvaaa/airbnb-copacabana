@@ -1586,7 +1586,7 @@ function refreshEditorSession(){
   }).catch(()=>false);
 }
 const FIXED_CATEGORY_NAMES=[...FIXED_COMPOSITION_NAMES];
-function ensureCategoryNames(){const names=[...FIXED_CATEGORY_NAMES];Object.values(DATA.fixedCategories||{}).forEach(arr=>(arr||[]).forEach(c=>{if(c?.name&&!names.includes(c.name))names.push(c.name)}));return names}
+function ensureCategoryNames(){const names=[...FIXED_CATEGORY_NAMES];Object.values(DATA.fixedCategories||{}).forEach(arr=>(arr||[]).forEach(c=>{if(!c?.name||normalizeCategoryName(c.name)==='Taxa de limpeza'||names.includes(c.name))return;names.push(c.name)}));return names}
 function categoryValue(y,m,name){const c=(DATA.fixedCategories[String(y)]||[]).find(x=>x.name===name);return c?.values?.[Number(m)]??null}
 async function saveCategoryOverride(y,m,name,v){
   name=canonicalCategoryName(name);
