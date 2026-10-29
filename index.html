@@ -1192,7 +1192,7 @@ function setSelects(){
   qs('monthStartSelect').innerHTML=opts; qs('monthEndSelect').innerHTML=opts;
   qs('monthStartSelect').value=dates.some(d=>d.key===currentStart)?currentStart:(dates[0]?.key||'');
   qs('monthEndSelect').value=dates.some(d=>d.key===currentEnd)?currentEnd:(dates[dates.length-1]?.key||'');
-  if(qs('monthStartSelect').value>qs('monthEndSelect').value)qs('monthEndSelect').value=qs('monthStartSelect').value;
+  if(qs('monthStartSelect').value>qs('monthEndSelect').value){const start=qs('monthStartSelect').value;qs('monthStartSelect').value=qs('monthEndSelect').value;qs('monthEndSelect').value=start;}
   const editOpts=MONTHS.map((m,i)=>'<option value="'+i+'">'+m+'</option>').join('');
   qs('editMonth').innerHTML=editOpts;
   // Mantém exatamente o ano/mês selecionados no editor após salvar, apagar ou
@@ -1747,12 +1747,12 @@ qs('editModalClose').addEventListener('click',()=>qs('editModal').classList.remo
   }
   if(id==='monthStartSelect'){
     viewSel.value='monthly';
-    if(endSel.value<startSel.value)endSel.value=startSel.value;
+    if(endSel.value<startSel.value){const previousEnd=endSel.value;endSel.value=startSel.value;startSel.value=previousEnd;}
     if(startSel.value.slice(0,4)!==endSel.value.slice(0,4))yearSel.value='all';
   }
   if(id==='monthEndSelect'){
     viewSel.value='monthly';
-    if(endSel.value<startSel.value)startSel.value=endSel.value;
+    if(endSel.value<startSel.value){const previousStart=startSel.value;startSel.value=endSel.value;endSel.value=previousStart;}
     if(startSel.value.slice(0,4)!==endSel.value.slice(0,4))yearSel.value='all';
   }
   if(id==='viewSelect'){
