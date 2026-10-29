@@ -738,7 +738,7 @@ function loadCloudSnapshot(){try{return JSON.parse(localStorage.getItem(CLOUD_SN
 function saveCloudSnapshot(){try{localStorage.setItem(CLOUD_SNAPSHOT_KEY,JSON.stringify({overrides:cloudOverrides,version:1}))}catch(e){}}
 const STORAGE_KEY='dashboard_financeiro_overrides_v4';
 const MONTHS=BASE_DATA.months;
-const FIXED_COMPOSITION_NAMES=['IPTU','Condomínio','Internet','Light','Natury'];
+const FIXED_COMPOSITION_NAMES=['IPTU','Condomínio','Internet','Light','Naturgy'];
 let currentRating=null;
 let DATA=loadMergedData(); let years=getYears();
 const COLORS={blue:'#2563eb',green:'#059669',orange:'#d97706',red:'#dc2626',lightRed:'#f87171',wine:'#7f1d1d',pink:'#ec4899',purple:'#7c3aed',sky:'#0ea5e9',violet:'#8b5cf6'};
