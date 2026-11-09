@@ -854,7 +854,10 @@ function renderRating(){
   if(v==null)return;
   // A meta seguinte sempre parte da nota exibida no painel (duas casas decimais).
   // Ao alcançar 4,98, por exemplo, a próxima meta passa a ser 4,99.
-  const currentCents=Math.round((v+Number.EPSILON)*100);
+  // Use exatamente a nota arredondada que aparece no indicador principal.
+  // Evita divergência entre o arredondamento exibido e o cálculo da próxima meta.
+  const currentDisplay=Number(formatRating(v).replace(',','.'));
+  const currentCents=Math.round(currentDisplay*100);
   const nextTarget=Math.min(500,currentCents+1)/100;
   const nextNeeded=reviewsNeededForTarget(c,nextTarget);
   const fiveNeeded=reviewsNeededForTarget(c,5);
