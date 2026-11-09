@@ -852,8 +852,10 @@ function renderRating(){
   const reviewsEl=document.querySelector('#ratingReviewCount');
   if(reviewsEl)reviewsEl.textContent='de '+totalReviews+' avaliações';
   if(v==null)return;
-  const currentDisplay=Math.round((v+Number.EPSILON)*100)/100;
-  const nextTarget=Math.min(5,Math.round((currentDisplay+0.01+Number.EPSILON)*100)/100);
+  // A meta seguinte sempre parte da nota exibida no painel (duas casas decimais).
+  // Ao alcançar 4,98, por exemplo, a próxima meta passa a ser 4,99.
+  const currentCents=Math.round((v+Number.EPSILON)*100);
+  const nextTarget=Math.min(500,currentCents+1)/100;
   const nextNeeded=reviewsNeededForTarget(c,nextTarget);
   const fiveNeeded=reviewsNeededForTarget(c,5);
   const fiveStars='<span class="rating-goal-stars">★★★★★</span>';
@@ -863,8 +865,8 @@ function renderRating(){
         ? 'Falta 1 avaliação de 5 estrelas, para alcançar 5,00'
         : 'Faltam '+fiveNeeded+' avaliações de 5 estrelas, para alcançar 5,00'))
       : (nextNeeded===1
-        ? 'Falta 1 avaliação de 5 estrelas, para alcançar '+formatRating(nextTarget)
-        : 'Faltam '+nextNeeded+' avaliações de 5 estrelas, para alcançar '+formatRating(nextTarget));
+        ? 'Falta 1 avaliação de 5 estrelas, para alcançar a próxima nota '+formatRating(nextTarget)
+        : 'Faltam '+nextNeeded+' avaliações de 5 estrelas, para alcançar a próxima nota '+formatRating(nextTarget));
   }
   if(fiveEl){
     fiveEl.innerHTML=fiveNeeded===0
