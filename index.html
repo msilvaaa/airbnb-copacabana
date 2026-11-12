@@ -265,6 +265,9 @@ body.dark{--bg:#0b1220;--card:#111827;--ink:#f3f4f6;--muted:#9ca3af;--line:#2430
   }
 }
 
+/* Mês usa select nativo para abrir a lista de opções diretamente no navegador. */
+#monthSelect{display:block!important;width:100%;height:42px;min-height:42px;box-sizing:border-box;font-family:inherit;font-size:16px;font-weight:600;line-height:20px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--bg);color:var(--ink);cursor:pointer;}
+#monthSelect:disabled{opacity:1;cursor:pointer;}
 /* Filtro adicional Mês: seletor nativo para garantir funcionamento; fica abaixo de Ano. */
 @media(min-width:1101px){
   .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -1326,7 +1329,7 @@ function initMonthPickers(){
   syncMonthPickerUI();
 }
 function initChoicePickers(){
-  ['yearSelect','monthSelect','viewSelect'].forEach(id=>{
+  ['yearSelect','viewSelect'].forEach(id=>{
     const sel=qs(id);
     if(!sel||sel.dataset.choicePickerReady==='1')return;
     sel.classList.add('choice-native-select');
@@ -1376,7 +1379,7 @@ function initChoicePickers(){
   syncChoicePickerUI();
 }
 function syncChoicePickerUI(){
-  ['yearSelect','monthSelect','viewSelect'].forEach(id=>{
+  ['yearSelect','viewSelect'].forEach(id=>{
     const sel=qs(id),picker=document.querySelector('.choice-picker[data-for-select="'+id+'"]');
     if(!sel||!picker)return;
     const trigger=picker.querySelector('.choice-picker-trigger');
