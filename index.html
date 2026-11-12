@@ -1212,7 +1212,7 @@ function periodBounds(){
   const indices=points.filter(d=>d.year===s.year).map(d=>d.month);
   return {start:s.month,end:e.month,startYear:s.year,endYear:e.year,startKey:start,endKey:end,points,rangePoints,indices};
 }
-function periodLabel(){const p=periodBounds();if(compareMode&&p.startKey!==p.endKey)return MONTHS[p.start]+'/'+p.startYear+' × '+MONTHS[p.end]+'/'+p.endYear;return p.startKey===p.endKey?MONTHS[p.start]+'/'+p.startYear:MONTHS[p.start]+'/'+p.startYear+' a '+MONTHS[p.end]+'/'+p.endYear}
+function periodLabel(){const p=periodBounds();if(p.monthOnlyAcrossYears)return MONTHS[p.start]+' (todos os anos)';if(compareMode&&p.startKey!==p.endKey)return MONTHS[p.start]+'/'+p.startYear+' × '+MONTHS[p.end]+'/'+p.endYear;return p.startKey===p.endKey?MONTHS[p.start]+'/'+p.startYear:MONTHS[p.start]+'/'+p.startYear+' a '+MONTHS[p.end]+'/'+p.endYear}
 function periodForYear(y,p=periodBounds()){const yy=String(y);if(p.monthOnlyAcrossYears)return {start:p.start,end:p.end};if(p.monthOnlyYear)return yy===p.monthOnlyYear?{start:p.start,end:p.end}:{start:0,end:-1};return {start:yy===p.startYear?(p.start):0,end:yy===p.endYear?p.end:11};}
 function sumPeriod(arr,start,end){const vals=(arr||[]).slice(start,end+1).filter(v=>v!=null&&Number.isFinite(v));return vals.length?vals.reduce((a,b)=>a+b,0):null}
 function sumPeriodForYear(arr,yr,p){if(String(yr)<p.startYear||String(yr)>p.endYear)return null;const r=periodForYear(yr,p);return sumPeriod(arr,r.start,r.end)}
@@ -1802,7 +1802,8 @@ qs('editModalClose').addEventListener('click',()=>qs('editModal').classList.remo
   if(id==='monthSelect'){
     const selectedMonth=qs('monthSelect').value;
     if(yearSel.value==='all'){
-      qs('monthSelect').value='all';
+      // Sem ano específico, o mês escolhido filtra esse mês em todos os anos.
+      viewSel.value='annual';
     }else if(selectedMonth!=='all'){
       // O filtro adicional Mês também sincroniza o intervalo já existente,
       // garantindo que todos os gráficos e tabelas usem somente esse mês.
@@ -1845,7 +1846,7 @@ function applyDashboardOpeningDefaults(){
   if(!yearSel||!startSel||!endSel||!viewSel)return;
   yearSel.value='all';
   qs('monthSelect').value='all';
-  qs('monthSelect').disabled=true;
+  qs('monthSelect').disabled=false;
   startSel.value='2021-00';
   endSel.value='2027-11';
   viewSel.value='annual';
@@ -1862,7 +1863,7 @@ function resetFiltersToDefault(){
   setSelects();
   qs('yearSelect').value='all';
   qs('monthSelect').value='all';
-  qs('monthSelect').disabled=true;
+  qs('monthSelect').disabled=false;
   qs('monthStartSelect').value='2021-00';
   qs('monthEndSelect').value='2027-11';
   qs('viewSelect').value='annual';
