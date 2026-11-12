@@ -1225,6 +1225,7 @@ function setSelects(){
   qs('monthSelect').innerHTML='<option value="all">Todos os meses</option>'+MONTHS.map((m,i)=>'<option value="'+String(i).padStart(2,'0')+'">'+m+'</option>').join('');
   qs('monthSelect').value=qs('yearSelect').value==='all'?'all':(currentMonth==='all'||/^\d{2}$/.test(currentMonth)?currentMonth:'all');
   qs('monthSelect').disabled=qs('yearSelect').value==='all';
+  syncChoicePickerUI();
   const dates=years.flatMap(y=>Array.from({length:12},(_,m)=>({year:String(y),month:m,key:String(y)+'-'+String(m).padStart(2,'0')})));
   const displayDates=[...dates].reverse();
   const opts=displayDates.map(d=>'<option value="'+d.key+'">'+MONTHS[d.month]+'/'+d.year+'</option>').join('');
@@ -1318,7 +1319,7 @@ function initMonthPickers(){
   syncMonthPickerUI();
 }
 function initChoicePickers(){
-  ['yearSelect','viewSelect'].forEach(id=>{
+  ['yearSelect','monthSelect','viewSelect'].forEach(id=>{
     const sel=qs(id);
     if(!sel||sel.dataset.choicePickerReady==='1')return;
     sel.classList.add('choice-native-select');
@@ -1368,7 +1369,7 @@ function initChoicePickers(){
   syncChoicePickerUI();
 }
 function syncChoicePickerUI(){
-  ['yearSelect','viewSelect'].forEach(id=>{
+  ['yearSelect','monthSelect','viewSelect'].forEach(id=>{
     const sel=qs(id),picker=document.querySelector('.choice-picker[data-for-select="'+id+'"]');
     if(!sel||!picker)return;
     const trigger=picker.querySelector('.choice-picker-trigger');
@@ -1772,6 +1773,7 @@ qs('editModalClose').addEventListener('click',()=>qs('editModal').classList.remo
   const yearSel=qs('yearSelect'),startSel=qs('monthStartSelect'),endSel=qs('monthEndSelect'),viewSel=qs('viewSelect');
   if(id==='yearSelect'){
     qs('monthSelect').disabled=yearSel.value==='all';
+    syncChoicePickerUI();
     if(yearSel.value==='all'){
       qs('monthSelect').value='all';
       // "Todos os anos" abre a comparação anual de todo o histórico.
