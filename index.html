@@ -1188,7 +1188,14 @@ function periodBounds(){
   if(selectedYear!=='all'&&selectedMonth!=='all'){
     const key=String(selectedYear)+'-'+String(selectedMonth).padStart(2,'0');
     const point=dates.find(d=>d.key===key);
-    if(point)return {start:point.month,end:point.month,startYear:point.year,endYear:point.year,startKey:key,endKey:key,points:[point],rangePoints:[point],indices:[point.month]};
+    if(point)return {start:point.month,end:point.month,startYear:point.year,endYear:point.year,startKey:key,endKey:key,points:[point],rangePoints:[point],indices:[point.month],monthOnly:true};
+  }
+  if(selectedYear==='all'&&selectedMonth!=='all'){
+    const month=Number(selectedMonth);
+    const monthPoints=dates.filter(d=>d.month===month);
+    if(monthPoints.length){
+      return {start:month,end:month,startYear:monthPoints[0].year,endYear:monthPoints[monthPoints.length-1].year,startKey:monthPoints[0].key,endKey:monthPoints[monthPoints.length-1].key,points:monthPoints,rangePoints:monthPoints,indices:[month],monthOnly:true};
+    }
   }
   const fallbackStart=dates[0]?.key||'2021-00',fallbackEnd=dates[dates.length-1]?.key||fallbackStart;
   let start=qs('monthStartSelect')?.value||fallbackStart;
@@ -1203,7 +1210,7 @@ function periodBounds(){
   return {start:s.month,end:e.month,startYear:s.year,endYear:e.year,startKey:start,endKey:end,points,rangePoints,indices};
 }
 function periodLabel(){const p=periodBounds();if(compareMode&&p.startKey!==p.endKey)return MONTHS[p.start]+'/'+p.startYear+' × '+MONTHS[p.end]+'/'+p.endYear;return p.startKey===p.endKey?MONTHS[p.start]+'/'+p.startYear:MONTHS[p.start]+'/'+p.startYear+' a '+MONTHS[p.end]+'/'+p.endYear}
-function periodForYear(y,p=periodBounds()){const yy=String(y);return {start:yy===p.startYear?(p.start):0,end:yy===p.endYear?p.end:11};}
+function periodForYear(y,p=periodBounds()){const yy=String(y);if(p.monthOnly)return {start:p.start,end:p.end};return {start:yy===p.startYear?(p.start):0,end:yy===p.endYear?p.end:11};}
 function sumPeriod(arr,start,end){const vals=(arr||[]).slice(start,end+1).filter(v=>v!=null&&Number.isFinite(v));return vals.length?vals.reduce((a,b)=>a+b,0):null}
 function sumPeriodForYear(arr,yr,p){if(String(yr)<p.startYear||String(yr)>p.endYear)return null;const r=periodForYear(yr,p);return sumPeriod(arr,r.start,r.end)}
 function periodStats(y,start,end){let rev=0,revComplete=0,fix=0,maint=0,balance=0,bn=0;const p=periodBounds(),r=periodForYear(y,p);for(let i=r.start;i<=r.end;i++){const d=getMonthData(String(y),i);if(d.r!=null)rev+=d.r;if(d.f!=null)fix+=d.f;if(d.m!=null)maint+=d.m;if(d.result!=null){revComplete+=d.r;balance+=d.result;bn++}}return {rev,revComplete,fix,maint,balance:bn?balance:null,margin:revComplete&&bn?balance/revComplete:null,bn}}
@@ -1223,8 +1230,8 @@ function setSelects(){
   // Depois que o usuário já estiver usando o dashboard, preserva a seleção atual.
   qs('yearSelect').value=currentYear && years.includes(currentYear)?currentYear:'all';
   qs('monthSelect').innerHTML='<option value="all">Todos os meses</option>'+MONTHS.map((m,i)=>'<option value="'+String(i).padStart(2,'0')+'">'+m+'</option>').join('');
-  qs('monthSelect').value=qs('yearSelect').value==='all'?'all':(currentMonth==='all'||/^\d{2}$/.test(currentMonth)?currentMonth:'all');
-  qs('monthSelect').disabled=qs('yearSelect').value==='all';
+  qs('monthSelect').value=(currentMonth==='all'||/^\d{2}$/.test(currentMonth))?currentMonth:'all';
+  qs('monthSelect').disabled=false;
   syncChoicePickerUI();
   const dates=years.flatMap(y=>Array.from({length:12},(_,m)=>({year:String(y),month:m,key:String(y)+'-'+String(m).padStart(2,'0')})));
   const displayDates=[...dates].reverse();
@@ -1772,7 +1779,7 @@ qs('editModalClose').addEventListener('click',()=>qs('editModal').classList.remo
 ['yearSelect','monthSelect','monthStartSelect','monthEndSelect','viewSelect'].forEach(id=>qs(id).addEventListener('change',()=>{
   const yearSel=qs('yearSelect'),startSel=qs('monthStartSelect'),endSel=qs('monthEndSelect'),viewSel=qs('viewSelect');
   if(id==='yearSelect'){
-    qs('monthSelect').disabled=yearSel.value==='all';
+    qs('monthSelect').disabled=false;
     syncChoicePickerUI();
     if(yearSel.value==='all'){
       qs('monthSelect').value='all';
