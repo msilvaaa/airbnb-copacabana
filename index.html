@@ -265,6 +265,13 @@ body.dark{--bg:#0b1220;--card:#111827;--ink:#f3f4f6;--muted:#9ca3af;--line:#2430
   }
 }
 
+/* Mês inicial e Mês final permanecem em tons neutros de cinza. */
+.controls .ctrl:has(#monthStartSelect) label,
+.controls .ctrl:has(#monthEndSelect) label{color:var(--muted)!important;}
+.controls .ctrl:has(#monthStartSelect) .month-picker-trigger,
+.controls .ctrl:has(#monthEndSelect) .month-picker-trigger{background:var(--bg)!important;border-color:var(--line)!important;color:var(--ink)!important;}
+.controls .ctrl:has(#monthStartSelect) select,
+.controls .ctrl:has(#monthEndSelect) select{background:var(--bg)!important;border-color:var(--line)!important;color:var(--ink)!important;}
 /* Mês mantém o select nativo, mas com o mesmo desenho do seletor Ano. */
 .month-filter-ctrl{position:relative;}
 .month-filter-ctrl::after{content:"⌄";position:absolute;right:13px;top:42px;transform:translateY(-50%);font-size:16px;color:var(--muted);line-height:1;pointer-events:none;}
