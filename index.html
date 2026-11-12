@@ -264,6 +264,26 @@ body.dark{--bg:#0b1220;--card:#111827;--ink:#f3f4f6;--muted:#9ca3af;--line:#2430
     box-sizing:border-box!important;border-radius:10px!important;
   }
 }
+
+/* Filtro adicional Mês: fica abaixo de Ano sem deslocar os filtros antigos. */
+@media(min-width:1101px){
+  .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .controls .ctrl:has(#yearSelect){grid-column:1;grid-row:1}
+  .controls .month-filter-ctrl{grid-column:1;grid-row:2}
+  .controls .ctrl:has(#monthStartSelect){grid-column:2;grid-row:1}
+  .controls .ctrl:has(#monthEndSelect){grid-column:3;grid-row:1}
+  .controls .ctrl:has(#viewSelect){grid-column:4;grid-row:1}
+  .controls .compare-row{grid-column:2 / -1;grid-row:2}
+}
+@media(max-width:1100px){
+  .controls{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .controls .month-filter-ctrl{grid-column:1;grid-row:2}
+}
+@media(max-width:650px){
+  .controls{grid-template-columns:1fr}
+  .controls .month-filter-ctrl{grid-column:1;grid-row:auto}
+}
+
 </style>
 
 <style>
@@ -379,7 +399,7 @@ body.dark .controls .ctrl:nth-child(2) select,body.dark .controls .ctrl:nth-chil
 <body>
 <div class="app">
 <div class="topbar"><div class="brand"><div class="brand-title"><div class="title">Airbnb - Copacabana Rio de Janeiro</div><div class="rating-line"><span class="rating" id="mainRating">★ —</span><span class="rating-reviews" id="ratingReviewCount">de — avaliações</span></div><div class="rating-goals"><span id="ratingGoalNext">Faltam — avaliações para alcançar o próximo nível.</span><span id="ratingGoalFive">Faltam — avaliações para alcançar a nota 5,00.</span></div><div class="subtitle"></div></div></div><div class="actions"><button class="action primary" id="editBtn">✎ Editar dados</button><button class="action" id="printBtn">⎙ Imprimir</button><button class="action" id="themeBtn">☾</button></div></div>
-<div class="controls"><div class="ctrl"><label>Ano</label><select id="yearSelect" autocomplete="off"></select></div><div class="ctrl"><label>Mês</label><select id="monthSelect" autocomplete="off"><option value="all">Todos os meses</option></select></div><div class="ctrl"><label>Mês inicial</label><select id="monthStartSelect" autocomplete="off"></select></div><div class="ctrl"><label>Mês final</label><select id="monthEndSelect" autocomplete="off"></select></div><div class="ctrl"><label>Visão</label><select id="viewSelect" autocomplete="off"><option value="annual">Anual</option><option value="monthly">Mensal</option></select></div><div class="compare-row"><button id="compareBtn" class="compare-btn" type="button">⇄ Comparar</button></div></div><div class="period-note">O período selecionado é aplicado a todas as abas. Na visão <strong>Mensal</strong>, você vê os meses do intervalo; na visão <strong>Anual</strong>, compara os anos usando somente esse mesmo período.</div>
+<div class="controls"><div class="ctrl"><label>Ano</label><select id="yearSelect" autocomplete="off"></select></div><div class="ctrl month-filter-ctrl"><label>Mês</label><select id="monthSelect" autocomplete="off"><option value="all">Todos os meses</option></select></div><div class="ctrl"><label>Mês inicial</label><select id="monthStartSelect" autocomplete="off"></select></div><div class="ctrl"><label>Mês final</label><select id="monthEndSelect" autocomplete="off"></select></div><div class="ctrl"><label>Visão</label><select id="viewSelect" autocomplete="off"><option value="annual">Anual</option><option value="monthly">Mensal</option></select></div><div class="compare-row"><button id="compareBtn" class="compare-btn" type="button">⇄ Comparar</button></div></div><div class="period-note">O período selecionado é aplicado a todas as abas. Na visão <strong>Mensal</strong>, você vê os meses do intervalo; na visão <strong>Anual</strong>, compara os anos usando somente esse mesmo período.</div>
 <div class="nav"><button class="tab active" data-tab="overview">Visão geral</button><button class="tab" data-tab="balance">Balanço</button><button class="tab" data-tab="costs">Custos</button><button class="tab" data-tab="finance">Financiamento</button><button class="tab" data-tab="data">Dados</button></div>
 <section id="tab-overview"><div class="kpis" id="kpis"></div><div class="grid"><div class="card"><div class="card-head"><div><div class="card-title" id="mainTitle">Evolução anual</div><div class="card-sub">Receita, custos e balanço operacional</div></div><span class="badge period-badge" id="coverageBadge">—</span></div><div class="legend" id="mainLegend"></div><div class="chart" id="mainChart"></div></div><div class="card"><div class="card-head"><div><div class="card-title">Receita por ano</div><div class="card-sub">Histórico disponível na base</div></div><span class="badge period-badge">—</span></div><div class="chart smallchart" id="annualRevenueChart"></div></div></div><div class="grid3"><div class="card"><div class="card-head"><div><div class="card-title">Composição dos custos fixos</div><div class="card-sub">Categorias registradas no período</div></div><span class="badge period-badge">—</span></div><div class="chart smallchart" id="fixedMixChart"></div></div><div class="card"><div class="card-head"><div><div class="card-title">Manutenção</div><div class="card-sub">Evolução do gasto registrado</div></div><span class="badge period-badge">—</span></div><div class="chart smallchart" id="maintenanceChart"></div></div><div class="card"><div class="card-head"><div><div class="card-title">Destaques</div><div class="card-sub">Principais movimentos</div></div></div><div class="insights" id="insights"></div></div></div><div class="card"><div class="card-head"><div><div class="card-title">Leitura executiva</div><div class="card-sub" id="executiveText">—</div></div></div></div></section>
 <section id="tab-balance" class="hidden"><div class="kpis" id="balanceKpis"></div><div class="grid finance-single-chart"><div class="card"><div class="card-head"><div><div class="card-title" id="balanceChartTitle">Balanço</div><div class="card-sub" id="balanceChartSub">Resultado do período selecionado</div></div><span class="badge period-badge">—</span></div><div class="chart" id="balanceOnlyChart"></div></div></div><div class="card"><div class="card-head"><div><div class="card-title">Tabela do balanço</div><div class="card-sub">Visão consolidada do período selecionado</div></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Período</th><th>Receita</th><th>Custos fixos</th><th>Manutenção</th><th>Balanço</th><th>Margem</th></tr></thead><tbody id="balanceBody"></tbody></table></div></div><div class="notice">O balanço é calculado como receita menos custos totais (custos fixos + manutenção + taxa de limpeza), respeitando o período selecionado. O cálculo mensal considera os meses com receita e total de custos registrados.</div></section>
@@ -1199,7 +1219,7 @@ function setSelects(){
   // Depois que o usuário já estiver usando o dashboard, preserva a seleção atual.
   qs('yearSelect').value=currentYear && years.includes(currentYear)?currentYear:'all';
   qs('monthSelect').innerHTML='<option value="all">Todos os meses</option>'+MONTHS.map((m,i)=>'<option value="'+String(i).padStart(2,'0')+'">'+m+'</option>').join('');
-  qs('monthSelect').value=qs('yearSelect').value==='all'?'all':(currentMonth==='all'||/^\\d{2}$/.test(currentMonth)?currentMonth:'all');
+  qs('monthSelect').value=qs('yearSelect').value==='all'?'all':(currentMonth==='all'||/^\d{2}$/.test(currentMonth)?currentMonth:'all');
   qs('monthSelect').disabled=qs('yearSelect').value==='all';
   const dates=years.flatMap(y=>Array.from({length:12},(_,m)=>({year:String(y),month:m,key:String(y)+'-'+String(m).padStart(2,'0')})));
   const displayDates=[...dates].reverse();
@@ -1885,10 +1905,6 @@ window.addEventListener('load',()=>setTimeout(applyDashboardOpeningDefaults,50))
   renderRating();
 })();
 startDashboard();
-
-/* O filtro de mês fica diretamente abaixo do ano em telas largas. */
-@media(min-width:1101px){.controls{grid-template-columns:repeat(4,minmax(0,1fr))}.controls .ctrl:has(#monthSelect){grid-column:1;grid-row:2}}
-@media(max-width:1100px){.controls .ctrl:has(#monthSelect){grid-column:auto;grid-row:auto}}
 
 /* A tela fica estável depois do carregamento inicial.
    Não recarrega gráficos, KPIs ou valores em background. */
