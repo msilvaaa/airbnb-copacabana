@@ -273,15 +273,19 @@ body.dark{--bg:#0b1220;--card:#111827;--ink:#f3f4f6;--muted:#9ca3af;--line:#2430
   .controls .ctrl:has(#monthStartSelect){grid-column:2;grid-row:1}
   .controls .ctrl:has(#monthEndSelect){grid-column:3;grid-row:1}
   .controls .ctrl:has(#viewSelect){grid-column:4;grid-row:1}
-  .controls .compare-row{grid-column:1 / -1;grid-row:3}
+  .controls .compare-row{grid-column:2 / -1;grid-row:2;align-items:flex-start;padding-top:18px;margin-top:0}
+  .controls .compare-btn{height:42px;min-height:42px;padding:10px 18px;line-height:20px}
 }
 @media(max-width:1100px){
   .controls{grid-template-columns:repeat(2,minmax(0,1fr))}
   .controls .month-filter-ctrl{grid-column:1;grid-row:2}
+  .controls .compare-row{grid-column:2;grid-row:2;align-items:flex-start;padding-top:18px;margin-top:0}
+  .controls .compare-btn{height:42px;min-height:42px;padding:10px 14px;line-height:20px}
 }
 @media(max-width:650px){
   .controls{grid-template-columns:1fr}
   .controls .month-filter-ctrl{grid-column:1;grid-row:auto}
+  .controls .compare-row{grid-column:1;grid-row:auto;justify-content:flex-end;padding-top:0}
 }
 
 </style>
@@ -1784,8 +1788,22 @@ qs('editModalClose').addEventListener('click',()=>qs('editModal').classList.remo
     }
   }
   if(id==='monthSelect'){
-    if(yearSel.value==='all')qs('monthSelect').value='all';
-    viewSel.value='monthly';
+    const selectedMonth=qs('monthSelect').value;
+    if(yearSel.value==='all'){
+      qs('monthSelect').value='all';
+    }else if(selectedMonth!=='all'){
+      // O filtro adicional Mês também sincroniza o intervalo já existente,
+      // garantindo que todos os gráficos e tabelas usem somente esse mês.
+      const selectedKey=String(yearSel.value)+'-'+String(selectedMonth).padStart(2,'0');
+      startSel.value=selectedKey;
+      endSel.value=selectedKey;
+      viewSel.value='monthly';
+    }else{
+      // "Todos os meses" restaura o ano inteiro selecionado.
+      startSel.value=String(yearSel.value)+'-00';
+      endSel.value=String(yearSel.value)+'-11';
+      viewSel.value='monthly';
+    }
   }
   if(id==='monthStartSelect'){
     qs('monthSelect').value='all';
