@@ -1340,6 +1340,7 @@ function syncChoicePickerUI(){
     const trigger=picker.querySelector('.choice-picker-trigger');
     const opt=sel.options[sel.selectedIndex];
     trigger.textContent=opt?opt.text:'Selecionar';
+    trigger.disabled=!!sel.disabled;
     trigger.setAttribute('aria-label',opt?opt.text:'Selecionar');
     trigger.setAttribute('aria-expanded',picker.querySelector('.month-picker-panel').classList.contains('open')?'true':'false');
   });
@@ -1790,6 +1791,8 @@ function resetFiltersToDefault(){
   // Não alterar estes valores ao abrir/recarregar o dashboard.
   setSelects();
   qs('yearSelect').value='all';
+  qs('monthSelect').value='all';
+  qs('monthSelect').disabled=true;
   qs('monthStartSelect').value='2021-00';
   qs('monthEndSelect').value='2027-11';
   qs('viewSelect').value='annual';
@@ -1797,7 +1800,7 @@ function resetFiltersToDefault(){
   syncMonthPickerUI();
   syncChoicePickerUI();
   renderAll();
-  // Reforça apenas a aparência das quatro comboboxes após a renderização.
+  // Reforça a aparência dos filtros após a renderização.
   requestAnimationFrame(()=>{syncMonthPickerUI();syncChoicePickerUI()});
 }
 
