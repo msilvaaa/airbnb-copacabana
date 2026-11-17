@@ -1606,11 +1606,12 @@ async function authenticateEditor(){
     // A tela principal permanece exatamente no estado em que foi carregada.
     updateLoggedUser();
     qs('loginModal').classList.remove('open');
-    const now=new Date(),currentYear=now.getFullYear(),currentMonth=now.getMonth(),editorYear=String(currentYear);
+    const period=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',year:'numeric',month:'numeric'}).formatToParts(new Date());
+    qs('editYear').value=period.find(p=>p.type==='year').value;
+    qs('editMonth').value=String(Number(period.find(p=>p.type==='month').value)-1);
+    qs('editAddValue').value='';
     const last=cloudEditorState;
     if(last && typeof last==='object'){
-      qs('editYear').value=last.year!=null?String(last.year):(years.includes(editorYear)?editorYear:(qs('yearSelect').value==='all'?'2027':qs('yearSelect').value));
-      qs('editMonth').value=last.month!=null?String(last.month):String(currentMonth);
       const restoredType=last.type==='financing'?'fixedCategory':(last.type||'revenue');
       qs('editType').value=restoredType;
       updateEditorMode().then(()=>{
@@ -1619,8 +1620,6 @@ async function authenticateEditor(){
         if(restoredType==='fixedCategory') syncEditValue();
       }).catch(e=>console.error('Editor restore error:',e));
     }else{
-      qs('editYear').value=(years.includes(editorYear)?editorYear:(qs('yearSelect').value==='all'?'2027':qs('yearSelect').value));
-      qs('editMonth').value=String(currentMonth);
       qs('editType').value='revenue';
       updateEditorMode();
     }
@@ -1723,13 +1722,28 @@ function syncEditValue(){const y=String(qs('editYear').value||''),m=Number(qs('e
   if(t==='fixedCategory'){refreshCategorySelector();const name=qs('editCategory').value,saved=o.fixedCategory?.[y]?.[name]?.[String(m)],current=categoryValue(y,m,name);qs('editValue').value=saved??(current??'');qs('saveState').textContent=saved!=null?'Existe um lançamento manual salvo para esta categoria.':'Valor original / vazio.';return}
   const saved=o[t]?.[y]?.[String(m)],current=DATA[t]?.[y]?.[m];qs('editValue').value=saved??(current??'');qs('saveState').textContent=saved!=null?'Existe um lançamento manual salvo.':'Valor original / vazio.'
 }
-qs('confirmAddValueBtn').addEventListener('click',()=>{const add=Number(qs('editAddValue').value||0),base=Number(qs('editValue').value||0);if(!Number.isFinite(add)||add<0){qs('saveState').textContent='Informe um valor válido para somar.';return}qs('editValue').value=(base+add).toFixed(2);qs('editAddValue').value='';qs('saveState').textContent='Valor somado. Confira o novo total e clique em Salvar.'});
+function parseEditAmount(raw,empty=NaN){
+  const value=String(raw).trim();
+  if(!value)return empty;
+  if(!/^(?:\d+(?:[.,]\d{1,2})?|[.,]\d{1,2})$/.test(value))return NaN;
+  return Number(value.replace(',','.'));
+}
+qs('confirmAddValueBtn').addEventListener('click',()=>{
+  const add=parseEditAmount(qs('editAddValue').value),base=parseEditAmount(qs('editValue').value,0);
+  if(!Number.isFinite(add)||!Number.isFinite(base+add)){
+    qs('saveState').textContent='Informe valores válidos para somar. Use ponto ou vírgula para os centavos.';
+    return;
+  }
+  qs('editValue').value=(base+add).toFixed(2);
+  qs('editAddValue').value='';
+  qs('saveState').textContent='Valor somado. Confira o novo total e clique em Salvar.';
+});
 qs('saveEditBtn').addEventListener('click',async()=>{const t=qs('editType').value;if(t==='rating'){const c={};for(const s of [5,4,3,2,1]){const v=Number(qs('rating'+s).value);if(!Number.isInteger(v)||v<0){qs('saveState').textContent='Informe quantidades inteiras e não negativas.';return}c[s]=v;}if(c[5]+c[4]+c[3]+c[2]+c[1]===0){qs('saveState').textContent='Informe pelo menos uma avaliação.';return}qs('saveState').textContent='Salvando no Neon...';try{
   await saveRating(c);
   // Mantém exatamente os valores devolvidos pela gravação central.
   renderRating();
   qs('saveState').textContent='Nota salva no Neon — disponível em todos os dispositivos.';
-}catch(e){console.error('Rating editor save error:',e);qs('saveState').textContent='Erro ao salvar no Neon: '+(e?.message||'falha desconhecida');}return;}const y=Number(qs('editYear').value),m=Number(qs('editMonth').value),baseValue=Number(qs('editValue').value),addValue=Number(qs('editAddValue').value||0),v=baseValue+addValue;if(!y||y<2021||m<0||m>11||!Number.isFinite(v)||v<0){qs('saveState').textContent='Preencha ano, mês e um valor válido.';return}qs('saveState').textContent='Salvando no Neon...';let ok;if(t==='fixedCategory'){const name=qs('editCategory').value;if(!name){qs('saveState').textContent='Selecione uma categoria.';return}ok=await saveCategoryOverride(y,m,name,v)}else ok=await setOverride(t,y,m,v);
+}catch(e){console.error('Rating editor save error:',e);qs('saveState').textContent='Erro ao salvar no Neon: '+(e?.message||'falha desconhecida');}return;}const y=Number(qs('editYear').value),m=Number(qs('editMonth').value),baseInput=qs('editValue').value,addInput=qs('editAddValue').value,baseValue=parseEditAmount(baseInput,addInput.trim()?0:NaN),addValue=parseEditAmount(addInput,0),v=Number((baseValue+addValue).toFixed(2));if(!y||y<2021||m<0||m>11||!Number.isFinite(v)||v<0){qs('saveState').textContent='Preencha ano, mês e um valor válido.';return}qs('saveState').textContent='Salvando no Neon...';let ok;if(t==='fixedCategory'){const name=qs('editCategory').value;if(!name){qs('saveState').textContent='Selecione uma categoria.';return}ok=await saveCategoryOverride(y,m,name,v)}else ok=await setOverride(t,y,m,v);
 qs('saveState').textContent=ok?'Salvo no Neon — disponível em todos os dispositivos.':'Não foi possível salvar no Neon.';
 if(ok){
   // A confirmação visual vem imediatamente após a confirmação do Neon.
